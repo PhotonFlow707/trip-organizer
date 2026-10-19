@@ -260,6 +260,10 @@ select.inp {
 .city-flag, .city-cur { width: 48px; flex: none; text-align: center; }
 .city-counts { flex: none; white-space: nowrap; }
 #city-results { position: static; margin-top: 5px; max-height: 220px; }
+.date-bar { display: flex; align-items: center; gap: var(--sp-sm); flex-wrap: wrap; }
+.date-bar .inp { flex: 1; min-width: 150px; font-weight: 600; }
+.date-bar .btn-icon { flex: none; }
+#planned-days { margin-top: 2px; }
 .sched-bar { display: flex; align-items: center; gap: var(--sp-sm); flex-wrap: wrap; padding: 0 2px; }
 .empty { padding: var(--sp-lg) var(--sp-md); text-align: center; color: var(--text-3); font-size: .78rem; line-height: 1.6; }
 .empty .big { font-size: 1.8rem; display: block; margin-bottom: 6px; opacity: .5; }
@@ -694,33 +698,22 @@ details.box > summary:hover { color: var(--text-1); }
     <!-- Schedule ----------------------------------------------- -->
     <div class="panel hidden" id="panel-schedule">
       <div class="card">
-        <div class="card-head"><span class="card-title">Add a day</span></div>
+        <div class="card-head">
+          <span class="card-title">Day</span>
+          <span class="spacer"></span>
+          <span class="card-note" id="sched-city-note"></span>
+        </div>
         <div class="card-body">
-          <div class="row">
-            <div class="field">
-              <label for="sd-date">Date</label>
-              <input class="inp" id="sd-date" type="date">
-            </div>
-            <div class="field">
-              <label for="sd-city">City</label>
-              <select class="inp" id="sd-city"></select>
-            </div>
+          <div class="date-bar">
+            <button class="btn btn-icon" id="btn-day-prev" title="Previous day">◀</button>
+            <input class="inp" id="sched-date" type="date">
+            <button class="btn btn-icon" id="btn-day-next" title="Next day">▶</button>
+            <button class="btn btn-sm" id="btn-day-today">Today</button>
           </div>
-          <div class="field">
-            <label for="sd-title">Label (optional)</label>
-            <input class="inp" id="sd-title" placeholder="Arrival day / Museums / Day trip" autocomplete="off">
-          </div>
-          <div class="form-actions">
-            <button class="btn btn-primary" id="btn-day-add">Add day</button>
-            <button class="btn btn-sm" id="btn-sort-days">Sort by date</button>
-          </div>
+          <div class="card-note" id="sched-date-label"></div>
+          <div class="chip-row" id="planned-days"></div>
           <div class="status" id="day-status"></div>
         </div>
-      </div>
-      <div class="sched-bar">
-        <div class="chip-row" id="sched-scope"></div>
-        <span class="spacer"></span>
-        <span class="card-note" id="sched-note"></span>
       </div>
       <div id="day-list"></div>
     </div>
@@ -1133,7 +1126,7 @@ function blankCity(key) {
 
 function defaultState() {
   const st = { v: 1, tripName: 'My Trip', activeCity: 'paris', activePanel: 'pins',
-               focusDayId: null, notes: '', cities: {}, cityOrder: [], days: [], catFilter: [], tiles: 'esriDark', schedFilter: 'city', updatedAt: 0 };
+               focusDayId: null, notes: '', cities: {}, cityOrder: [], days: [], catFilter: [], tiles: 'esriDark', schedFilter: 'city', schedDate: todayISO(), updatedAt: 0 };
   SEED_ORDER.forEach(function (k) {
     st.cities[k] = makeCity(SEED_CITIES[k]);
     st.cityOrder.push(k);
@@ -1168,6 +1161,7 @@ function normalize(raw) {
   st.activePanel  = ['pins', 'travel', 'schedule', 'notes', 'trip'].indexOf(raw.activePanel) >= 0 ? raw.activePanel : 'pins';
   st.tiles = providerBy(raw.tiles).key;
   st.schedFilter = raw.schedFilter === 'all' ? 'all' : 'city';
+  st.schedDate = /^\d{4}-\d{2}-\d{2}$/.test(raw.schedDate) ? raw.schedDate : todayISO();
   st.updatedAt = (typeof raw.updatedAt === 'number' && isFinite(raw.updatedAt)) ? raw.updatedAt : 0;          /* unknown key falls back to the default */
   st.catFilter = Array.isArray(raw.catFilter) ? raw.catFilter.filter(function (c) { return CATS[c]; }) : [];
 
@@ -1283,7 +1277,7 @@ function normalize(raw) {
 
 function defaultStateShape() {
   const st = { v: 1, tripName: 'My Trip', activeCity: 'paris', activePanel: 'pins',
-               focusDayId: null, notes: '', cities: {}, cityOrder: [], days: [], catFilter: [], tiles: 'esriDark', schedFilter: 'city', updatedAt: 0 };
+               focusDayId: null, notes: '', cities: {}, cityOrder: [], days: [], catFilter: [], tiles: 'esriDark', schedFilter: 'city', schedDate: todayISO(), updatedAt: 0 };
   SEED_ORDER.forEach(function (k) { st.cities[k] = makeCity(SEED_CITIES[k]); st.cityOrder.push(k); });
   return st;
 }
@@ -1922,16 +1916,9 @@ function renderPins() {
   byId('map-city-title').textContent = CITY(S.activeCity).name + ' · ' + CITY(S.activeCity).country;
   byId('tv-settings-city').textContent = CITY(S.activeCity).name;
 
-  /* Name the day the schedule button would use, so it is never a guess. */
-  const fd = focusedDay();
-  const addTarget = (fd && fd.city === S.activeCity) ? fd
-    : (function () {
-        const ds = S.days.filter(function (d) { return d.city === S.activeCity; });
-        return ds.length === 1 ? ds[0] : null;
-      })();
-  const addTip = addTarget
-    ? 'Add to ' + fmtDate(addTarget.date) + (addTarget.title ? ' — ' + addTarget.title : '')
-    : 'Choose a day first (press 👁 on it in Schedule)';
+  /* The schedule button always targets the day the calendar is showing,
+     so it can simply say which one that is. */
+  const addTip = 'Add to ' + fmtDate(S.schedDate) + ' in ' + CITY(S.activeCity).name;
 
   const shown = city.pins.filter(function (p) {
     if (S.catFilter.indexOf(p.cat) >= 0) return false;
@@ -2494,6 +2481,66 @@ function touchDay(dayId) {
   return true;
 }
 
+/* A day is identified by its date AND its city: the same date can hold a
+   Paris plan and a Nancy plan, which is what a multi-city trip needs. */
+function findDay(date, city) {
+  for (let i = 0; i < S.days.length; i++) {
+    if (S.days[i].date === date && S.days[i].city === city) return S.days[i];
+  }
+  return null;
+}
+
+/* A day exists because something is on it. This creates the record the
+   moment the first stop needs it. */
+function ensureDay(date, city) {
+  let d = findDay(date, city);
+  if (!d) {
+    d = { id: uid(), date: date, city: city, title: '', notes: '', items: [] };
+    S.days.push(d);
+  }
+  return d;
+}
+
+/* A day with nothing on it is not a plan, it is a leftover. Dropping them
+   keeps the planned-days strip honest. */
+function pruneEmptyDays(keepId) {
+  S.days = S.days.filter(function (d) {
+    if (d.id === keepId) return true;
+    return d.items.length > 0 || (d.title || '').trim() !== '' || (d.notes || '').trim() !== '';
+  });
+  if (!dayById(S.focusDayId)) S.focusDayId = null;
+}
+
+function plannedDays() {
+  return S.days.slice().sort(function (a, b) {
+    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    return S.cityOrder.indexOf(a.city) - S.cityOrder.indexOf(b.city);
+  });
+}
+
+function shiftDate(iso, delta) {
+  const d = parseDate(iso) || new Date();
+  d.setDate(d.getDate() + delta);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+         String(d.getDate()).padStart(2, '0');
+}
+
+/* Move the whole app to one day: the schedule, the map and anything that
+   adds a place all follow the date and city chosen here. */
+function goToDay(date, city) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date || '')) S.schedDate = date;
+  pruneEmptyDays();
+  const target = city || S.activeCity;
+  const d = findDay(S.schedDate, target);
+  S.focusDayId = d ? d.id : null;
+  if (city && city !== S.activeCity) {
+    setCity(city);
+  } else {
+    saveUi();
+    renderAll();
+  }
+}
+
 function dayById(id) {
   for (let i = 0; i < S.days.length; i++) if (S.days[i].id === id) return S.days[i];
   return null;
@@ -2562,42 +2609,35 @@ function pinOptionGroups(firstCity, selectedId) {
 }
 
 function renderSchedule() {
-  byId('badge-schedule').textContent = S.days.length + (S.days.length === 1 ? ' day' : ' days');
-  byId('sd-city').innerHTML = S.cityOrder.map(function (k) {
-    return '<option value="' + k + '"' + (k === S.activeCity ? ' selected' : '') + '>' +
-           CITY(k).flag + ' ' + esc(CITY(k).name) + '</option>';
-  }).join('');
+  const planned = plannedDays();
+  byId('badge-schedule').textContent = planned.length + (planned.length === 1 ? ' day' : ' days');
+  byId('sched-date').value = S.schedDate;
+  byId('sched-city-note').textContent = CITY(S.activeCity).flag + ' ' + CITY(S.activeCity).name;
+  byId('sched-date-label').textContent =
+    weekday(S.schedDate) + ' \u00b7 ' + fmtDate(S.schedDate) + ' \u00b7 ' + CITY(S.activeCity).name;
 
-  /* A day belongs to a city — that is what makes its stops offer that
-     city's places and its travel legs use that city's fares. So the list
-     follows the city picked at the top of the page, rather than mixing
-     every city together where switching cities would change nothing. */
-  const cityDays = S.days.filter(function (d) { return d.city === S.activeCity; });
-  const showAll = S.schedFilter === 'all';
-  const shown = showAll ? S.days : cityDays;
-  const elsewhere = S.days.length - cityDays.length;
+  /* Every date that has a plan, in any city — the master calendar. The
+     one you are on is marked; the rest are one tap away. */
+  byId('planned-days').innerHTML = planned.length
+    ? planned.map(function (d) {
+        const here = d.date === S.schedDate && d.city === S.activeCity;
+        return '<button class="chip' + (here ? ' on' : '') + '" data-act="sched-jump" data-date="' + d.date +
+               '" data-city="' + d.city + '" title="' + esc(weekday(d.date) + ' ' + fmtDate(d.date) + ' in ' + CITY(d.city).name) + '">' +
+               CITY(d.city).flag + ' ' + esc(shortDate(d.date)) +
+               ' <span style="opacity:.7">' + d.items.length + '</span></button>';
+      }).join('')
+    : '<span class="card-note">Nothing planned yet — pick a date and add your first stop.</span>';
 
-  byId('sched-scope').innerHTML =
-    '<button class="chip' + (showAll ? '' : ' on') + '" data-act="sched-scope" data-scope="city">' +
-      CITY(S.activeCity).flag + ' ' + esc(CITY(S.activeCity).name) +
-      ' <span style="opacity:.7">' + cityDays.length + '</span></button>' +
-    '<button class="chip' + (showAll ? ' on' : '') + '" data-act="sched-scope" data-scope="all">' +
-      '🌍 All cities <span style="opacity:.7">' + S.days.length + '</span></button>';
-  byId('sched-note').textContent = showAll
-    ? 'Every city. A day\u2019s stops come from its own city.'
-    : (elsewhere ? elsewhere + (elsewhere === 1 ? ' day' : ' days') + ' in other cities hidden' : '');
+  const shown = [];
+  const theDay = findDay(S.schedDate, S.activeCity);
+  if (theDay) shown.push(theDay);
 
   const host = byId('day-list');
   if (!shown.length) {
     host.innerHTML = '<div class="card"><div class="empty"><span class="big">🗓️</span>' +
-      (S.days.length
-        ? 'No days in ' + esc(CITY(S.activeCity).name) + ' yet. Add one above — its stops will then ' +
-          'offer ' + esc(CITY(S.activeCity).name) + ' places.<br><br>' +
-          '<button class="btn btn-sm" data-act="sched-scope" data-scope="all">' +
-          (S.days.length === 1 ? 'Show the one day you have' : 'Show all ' + S.days.length + ' days') +
-          '</button>'
-        : 'No days yet. Add one above, then drop your places into it — each stop shows the travel leg ' +
-          'from the one before it.') +
+      'Nothing planned for <b>' + esc(fmtDate(S.schedDate)) + '</b> in <b>' +
+      esc(CITY(S.activeCity).name) + '</b>.<br><br>' +
+      '<button class="btn btn-sm btn-primary" data-act="day-start">+ Add the first stop</button>' +
       '</div></div>';
     return;
   }
@@ -2612,23 +2652,14 @@ function renderSchedule() {
 
     h += '<div class="day-head">' +
            '<div>' +
-             '<input class="day-title-inp" type="date" data-act="day-date" data-id="' + day.id + '" value="' + esc(day.date) +
-               '" style="width:146px;font-size:.82rem;font-weight:700;color:var(--text-1)">' +
-             '<div class="day-dow">' + esc(weekday(day.date)) + ' · ' + esc(fmtDate(day.date)) + '</div>' +
+             '<div class="day-date">' + esc(fmtDate(day.date)) + '</div>' +
+             '<div class="day-dow">' + esc(weekday(day.date)) + ' · ' + esc(cityName) + '</div>' +
            '</div>' +
-           '<select class="day-title-inp" data-act="day-city" data-id="' + day.id + '" title="' + esc(cityName) +
-             '" style="width:auto;flex:none">' +
-             S.cityOrder.map(function (k) {
-               return '<option value="' + k + '"' + (k === day.city ? ' selected' : '') + '>' +
-                      CITY(k).flag + ' ' + esc(CITY(k).name) + '</option>';
-             }).join('') +
-           '</select>' +
            '<input class="day-title-inp" data-act="day-title" data-id="' + day.id + '" value="' + esc(day.title) + '" placeholder="Label this day…">' +
-           (focused ? '<span class="day-active" title="New places and the map both use this day">Working on this day</span>' : '') +
            '<button class="btn btn-icon' + (focused ? ' on' : '') + '" data-act="day-focus" data-id="' + day.id + '" title="' +
-             (focused ? 'This is the day new places are added to' : 'Work on this day — the map and new places will use it') + '">' +
+             (focused ? 'Shown on the map' : 'Show this day on the map') + '">' +
              (focused ? '👁 On map' : '👁') + '</button>' +
-           '<button class="btn btn-icon btn-danger" data-act="day-del" data-id="' + day.id + '" title="Delete this day">🗑</button>' +
+           '<button class="btn btn-icon btn-danger" data-act="day-del" data-id="' + day.id + '" title="Clear this day">🗑</button>' +
          '</div>';
 
     h += '<div class="day-body">';
@@ -2719,14 +2750,16 @@ function renderSchedule() {
   }).join('');
 }
 
-function addDay() {
-  const date = byId('sd-date').value || todayISO();
-  const day = { id: uid(), date: date, city: byId('sd-city').value, title: byId('sd-title').value.trim(), notes: '', items: [] };
-  S.days.push(day);
-  S.focusDayId = day.id;
-  byId('sd-title').value = '';
-  byId('day-status').textContent = 'Added ' + fmtDate(date) + ' in ' + CITY(day.city).name + '. It is now focused on the map.';
-  if (day.city !== S.activeCity) setCity(day.city); else { save(); renderAll(); }
+/* The first stop is what brings a day into being. */
+function startDay() {
+  const d = ensureDay(S.schedDate, S.activeCity);
+  S.focusDayId = d.id;
+  addItem(d.id, null);
+}
+
+function shortDate(iso) {
+  const d = parseDate(iso);
+  return d ? d.getDate() + ' ' + MON[d.getMonth()] : iso;
 }
 
 function addItem(dayId, pinId) {
@@ -2744,30 +2777,8 @@ function addItem(dayId, pinId) {
 function pinToDay(pinId) {
   const pin = pinById(S.activeCity, pinId);
   if (!pin) return;
-  const cityDays = S.days.filter(function (d) { return d.city === S.activeCity; });
-  if (!cityDays.length) {
-    showPanel('schedule');
-    byId('sd-city').value = S.activeCity;
-    byId('day-status').textContent = 'Add a day in ' + CITY(S.activeCity).name + ' first, then “' + pin.name + '” can go on it.';
-    byId('day-status').classList.add('err');
-    toast('No ' + CITY(S.activeCity).name + ' day yet — add one.');
-    return;
-  }
-
-  let day = focusedDay();          /* any city: a travel day spans two */
-  if (!day) {
-    if (cityDays.length === 1) {
-      day = cityDays[0];                 /* only one candidate: no ambiguity */
-    } else {
-      /* Several days and none chosen. Guessing the earliest is precisely
-         how places ended up on the wrong day — ask instead. */
-      showPanel('schedule');
-      byId('day-status').textContent = 'Which day should “' + pin.name + '” go on? Press 👁 on that day below, then add it again.';
-      byId('day-status').classList.add('err');
-      toast('Pick the day first — press 👁 on the day you are planning.', true);
-      return;
-    }
-  }
+  /* No guessing any more: a place joins the day the calendar is showing. */
+  const day = ensureDay(S.schedDate, S.activeCity);
   S.focusDayId = day.id;
   addItem(day.id, pinId);
   showPanel('schedule');
@@ -3830,8 +3841,12 @@ function showPanel(id) {
 }
 
 function setCity(key) {
-  if (!CITY(key)) return;
+  if (!S.cities[key]) return;
   S.activeCity = key;
+  /* The calendar stays on its date; the plan shown is this city's one for
+     that date, so the map and the rail follow the city you switch to. */
+  const sameDay = findDay(S.schedDate, key);
+  S.focusDayId = sameDay ? sameDay.id : null;
   tvFrom = '__base'; tvTo = '';
   clearNav();
   editingPinId = null;
@@ -3876,6 +3891,12 @@ document.addEventListener('click', function (ev) {
     case 'att-add': attPick(dayId, id); break;
     case 'att-open': attOpen(dayId, id, t.getAttribute('data-file')); break;
     case 'att-del': attRemove(dayId, id, t.getAttribute('data-file')); break;
+
+    case 'day-start': startDay(); break;
+    case 'sched-jump':
+      goToDay(t.getAttribute('data-date'), t.getAttribute('data-city'));
+      showPanel('schedule');
+      break;
 
     case 'route-mode': requestRoute(t.getAttribute('data-mode')); break;
     case 'leg-route': showLegOnMap(dayId, id); break;
@@ -3972,13 +3993,6 @@ document.addEventListener('click', function (ev) {
     case 'map-retry':
       hideMapNotice();
       if (mapOK()) map.invalidateSize();
-      break;
-
-    case 'sched-scope':
-      S.schedFilter = (t.getAttribute('data-scope') === 'all') ? 'all' : 'city';
-      saveUi();
-      showPanel('schedule');
-      renderSchedule();
       break;
 
     case 'day-focus':
@@ -4205,12 +4219,10 @@ function wire() {
     toast(CITY(S.activeCity).name + ' estimator reset to defaults.');
   });
 
-  byId('btn-day-add').addEventListener('click', addDay);
-  byId('btn-sort-days').addEventListener('click', function () {
-    S.days.sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
-    save(); renderAll();
-  });
-  byId('sd-title').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addDay(); } });
+  byId('sched-date').addEventListener('change', function () { goToDay(this.value); });
+  byId('btn-day-prev').addEventListener('click', function () { goToDay(shiftDate(S.schedDate, -1)); });
+  byId('btn-day-next').addEventListener('click', function () { goToDay(shiftDate(S.schedDate, 1)); });
+  byId('btn-day-today').addEventListener('click', function () { goToDay(todayISO()); });
 
   byId('btn-focus-clear').addEventListener('click', function () { S.focusDayId = null; save(); renderAll(); });
 
@@ -4287,7 +4299,6 @@ function init() {
   }
   byId('trip-name').value = S.tripName;
   byId('nt-trip').value = S.notes;
-  byId('sd-date').value = todayISO();
   /* Tomorrow morning: a weekday-ish default that returns real timetables
      rather than the thin overnight service. */
   const when = new Date(Date.now() + 86400000);
