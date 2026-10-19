@@ -1,0 +1,3441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#060b18">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Trip Organizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   Trip Organizer — Paris · Nancy · Barcelona
+   Dark glassmorphism, Inter. The token block mirrors the sibling
+   dashboards in this workspace; reuse these vars, don't hardcode hex.
+   ══════════════════════════════════════════════════════════════════ */
+:root {
+  --bg-base:       #060b18;
+  --bg-surface:    rgba(12, 20, 40, 0.75);
+  --bg-elevated:   rgba(18, 28, 52, 0.85);
+  --bg-hover:      rgba(30, 42, 72, 0.6);
+  --bg-sunken:     rgba(6, 11, 24, 0.55);
+  --border:        rgba(148, 163, 184, 0.10);
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --border-active: rgba(16, 185, 129, 0.40);
+
+  --text-1: #f1f5f9;
+  --text-2: #94a3b8;
+  --text-3: #64748b;
+
+  --emerald:       #10b981;
+  --emerald-light: #34d399;
+  --emerald-glow:  rgba(16, 185, 129, 0.25);
+  --amber:         #f59e0b;
+  --amber-glow:    rgba(245, 158, 11, 0.18);
+  --blue:          #3b82f6;
+  --blue-glow:     rgba(59, 130, 246, 0.18);
+  --violet:        #8b5cf6;
+  --pink:          #f472b6;
+  --sky:           #38bdf8;
+  --red:           #ef4444;
+
+  --sp-xs: 4px; --sp-sm: 8px; --sp-md: 16px; --sp-lg: 24px; --sp-xl: 32px;
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+  --ease: cubic-bezier(.4,0,.2,1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg-base);
+  color: var(--text-1);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 120% 60% at 50% 0%, rgba(59,130,246,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 50% at 85% 100%, rgba(16,185,129,0.05) 0%, transparent 50%);
+  background-attachment: fixed;
+}
+.hidden, [hidden] { display: none !important; }
+
+/* Native date and time pickers follow this on a phone. */
+:root { color-scheme: dark; }
+button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+
+/* ── Scrollbars ───────────────────────────────────────────────── */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: rgba(148,163,184,.18); border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,.32); background-clip: content-box; }
+
+/* ── Header ───────────────────────────────────────────────────── */
+.app-header {
+  display: flex; align-items: center; gap: var(--sp-lg);
+  flex-wrap: wrap;
+  padding: var(--sp-md) var(--sp-lg);
+  background: var(--bg-surface);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 900;
+}
+.hdr-brand { display: flex; align-items: center; gap: var(--sp-sm); min-width: 0; }
+.hdr-logo { font-size: 1.6rem; line-height: 1; filter: drop-shadow(0 0 10px var(--blue-glow)); }
+.trip-name {
+  background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm);
+  font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em;
+  padding: 3px 6px; width: 16ch; max-width: 32vw;
+  transition: all .15s var(--ease);
+}
+.trip-name:hover { border-color: var(--border); background: var(--bg-hover); }
+.trip-name:focus { outline: none; border-color: var(--border-active); background: var(--bg-sunken); width: 24ch; }
+.hdr-sub { font-size: .66rem; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; padding-left: 7px; }
+
+.city-tabs { display: flex; gap: var(--sp-xs); flex-wrap: wrap; }
+.city-tab {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 13px; border-radius: 99px; cursor: pointer;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  color: var(--text-2); font-weight: 600; font-size: .82rem;
+  transition: all .18s var(--ease);
+}
+.city-tab:hover { color: var(--text-1); border-color: var(--border-strong); transform: translateY(-1px); }
+.city-tab.active { color: var(--text-1); border-color: var(--border-active); background: linear-gradient(180deg, var(--emerald-glow), rgba(16,185,129,.06)); box-shadow: 0 0 18px -6px var(--emerald-glow); }
+.city-tab .flag { font-size: 1rem; }
+.city-tab .cnt { font-size: .68rem; color: var(--text-3); font-weight: 500; }
+.city-tab.active .cnt { color: var(--emerald-light); }
+
+.hdr-actions { display: flex; gap: var(--sp-xs); margin-left: auto; flex-wrap: wrap; }
+
+/* ── Buttons ──────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 12px; border-radius: var(--radius-sm); cursor: pointer;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  color: var(--text-2); font-weight: 600; font-size: .78rem;
+  transition: all .15s var(--ease); white-space: nowrap;
+}
+.btn:hover { color: var(--text-1); border-color: var(--border-strong); background: var(--bg-hover); }
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: linear-gradient(180deg, rgba(16,185,129,.22), rgba(16,185,129,.08)); border-color: var(--border-active); color: var(--emerald-light); }
+.btn-primary:hover { color: #fff; background: linear-gradient(180deg, rgba(16,185,129,.34), rgba(16,185,129,.14)); }
+.btn-danger:hover { color: var(--red); border-color: rgba(239,68,68,.4); background: rgba(239,68,68,.1); }
+.btn-sm { padding: 4px 8px; font-size: .72rem; }
+.btn-icon { padding: 5px 7px; font-size: .78rem; line-height: 1; }
+.btn.on { color: var(--emerald-light); border-color: var(--border-active); background: rgba(16,185,129,.14); }
+
+/* ── Banner ───────────────────────────────────────────────────── */
+.banner {
+  margin: var(--sp-sm) var(--sp-lg) 0; padding: 9px 14px;
+  border-radius: var(--radius-sm); font-size: .78rem;
+  background: var(--amber-glow); border: 1px solid rgba(245,158,11,.3); color: #fcd34d;
+}
+
+/* ── Layout ───────────────────────────────────────────────────── */
+.layout {
+  display: grid; grid-template-columns: minmax(400px, 480px) 1fr;
+  gap: var(--sp-md); align-items: start;
+  padding: var(--sp-md) var(--sp-lg) var(--sp-xl);
+  max-width: 1900px; margin: 0 auto;
+}
+.col-right { position: sticky; top: 78px; display: flex; flex-direction: column; gap: var(--sp-md); }
+/* A grid item defaults to min-width:auto, so a wide child (the focused-day
+   rail, a long pin row) stretches the track instead of scrolling inside its
+   own container, and the whole page then scrolls sideways. */
+.col-left, .col-right { min-width: 0; }
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .col-right { position: static; order: -1; }
+}
+
+/* ── Cards ────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-surface); backdrop-filter: blur(12px);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.card-head {
+  display: flex; align-items: center; gap: var(--sp-sm);
+  padding: 11px var(--sp-md); border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,.025), transparent);
+  flex-wrap: wrap;
+}
+.card-title { font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); }
+.card-body { padding: var(--sp-md); display: flex; flex-direction: column; gap: var(--sp-sm); }
+.card-note { font-size: .72rem; color: var(--text-3); line-height: 1.55; }
+.spacer { margin-left: auto; }
+
+/* ── Panel tabs ───────────────────────────────────────────────── */
+.panel-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-xs); margin-bottom: var(--sp-md); }
+.panel-tab {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 9px 4px; border-radius: var(--radius-md); cursor: pointer;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  color: var(--text-3); font-weight: 600; font-size: .7rem;
+  transition: all .18s var(--ease);
+}
+.panel-tab:hover { color: var(--text-1); border-color: var(--border-strong); }
+.panel-tab.active { color: var(--text-1); border-color: var(--border-active); background: linear-gradient(180deg, var(--emerald-glow), rgba(16,185,129,.05)); }
+.panel-tab .ico { font-size: 1.05rem; line-height: 1; }
+.panel-tab .badge { font-size: .62rem; color: var(--text-3); font-weight: 500; }
+.panel { display: flex; flex-direction: column; gap: var(--sp-md); animation: fadeIn .22s var(--ease); }
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+
+/* ── Forms ────────────────────────────────────────────────────── */
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field > label, .lbl {
+  font-size: .68rem; font-weight: 600; color: var(--text-3);
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.inp, select.inp, textarea.inp {
+  width: 100%; padding: 8px 10px;
+  background: var(--bg-sunken); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-1); font-size: .82rem;
+  transition: border-color .15s var(--ease), background .15s var(--ease);
+}
+.inp:hover { border-color: var(--border-strong); }
+.inp:focus { outline: none; border-color: var(--border-active); background: rgba(6,11,24,.8); }
+textarea.inp { resize: vertical; min-height: 60px; line-height: 1.55; }
+select.inp {
+  cursor: pointer; appearance: none; padding-right: 26px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-3) 50%), linear-gradient(135deg, var(--text-3) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%;
+  background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+}
+.inp::placeholder { color: var(--text-3); }
+.row { display: flex; gap: var(--sp-sm); }
+.row > * { flex: 1; min-width: 0; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-sm); }
+.form-actions { display: flex; gap: var(--sp-sm); margin-top: var(--sp-xs); }
+
+/* ── Chips ────────────────────────────────────────────────────── */
+.chip-row { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 9px; border-radius: 99px; cursor: pointer;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  color: var(--text-3); font-size: .7rem; font-weight: 600;
+  transition: all .15s var(--ease); user-select: none;
+}
+.chip:hover { color: var(--text-1); border-color: var(--border-strong); }
+.chip.on { color: var(--text-1); border-color: var(--cat, var(--border-active)); background: rgba(148,163,184,.12); }
+.chip-static { cursor: default; }
+.chip-static:hover { color: var(--text-3); border-color: var(--border); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cat, var(--text-3)); flex: none; }
+
+/* ── Pin list ─────────────────────────────────────────────────── */
+.cat-group { margin-bottom: var(--sp-sm); }
+.cat-group-head {
+  display: flex; align-items: center; gap: 7px; padding: 5px 2px;
+  font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3);
+}
+.cat-group-head .n { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.pin-row {
+  display: flex; align-items: center; gap: var(--sp-sm);
+  padding: 8px 10px; margin-bottom: 5px;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-left: 3px solid var(--cat, var(--border));
+  border-radius: var(--radius-sm);
+  transition: all .15s var(--ease);
+}
+.pin-row:hover { background: var(--bg-hover); border-color: var(--border-strong); }
+.pin-row.is-base { box-shadow: inset 0 0 0 1px var(--border-active); }
+.pin-ico { font-size: 1.05rem; line-height: 1; flex: none; }
+.pin-main { flex: 1; min-width: 0; }
+.pin-name { font-size: .84rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+.pin-meta { font-size: .68rem; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.pin-acts { display: flex; gap: 3px; flex: none; }
+.pin-note { font-size: .7rem; color: var(--text-2); margin-top: 4px; line-height: 1.5; white-space: pre-wrap; }
+.base-tag { font-size: .58rem; font-weight: 700; color: var(--emerald-light); background: rgba(16,185,129,.14); border: 1px solid var(--border-active); border-radius: 99px; padding: 1px 6px; letter-spacing: .04em; flex: none; }
+
+.sched-bar { display: flex; align-items: center; gap: var(--sp-sm); flex-wrap: wrap; padding: 0 2px; }
+.empty { padding: var(--sp-lg) var(--sp-md); text-align: center; color: var(--text-3); font-size: .78rem; line-height: 1.6; }
+.empty .big { font-size: 1.8rem; display: block; margin-bottom: 6px; opacity: .5; }
+
+/* ── Tables ───────────────────────────────────────────────────── */
+.tbl { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.tbl th {
+  text-align: left; padding: 7px 8px; font-size: .64rem; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--text-3);
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.tbl td { padding: 7px 8px; border-bottom: 1px solid rgba(148,163,184,.05); vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl tbody tr { transition: background .12s var(--ease); }
+.tbl tbody tr:hover { background: var(--bg-hover); }
+.tbl .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tbl .mode-cell { display: flex; align-items: center; gap: 7px; font-weight: 600; }
+.tbl tr.best { background: rgba(16,185,129,.07); }
+.tag-best { font-size: .56rem; font-weight: 700; padding: 1px 5px; border-radius: 99px; letter-spacing: .04em; margin-left: 5px; }
+.tag-fast { color: var(--emerald-light); background: rgba(16,185,129,.16); }
+.tag-live { color: #67e8f9; background: rgba(34,211,238,.16); }
+tr.routed { background: rgba(59,130,246,.10); }
+tr.routing td { opacity: .65; }
+
+/* ── Routed itinerary ─────────────────────────────────────────── */
+.route-card {
+  background: var(--bg-sunken); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); padding: 11px 12px;
+  display: flex; flex-direction: column; gap: 9px;
+}
+.route-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .8rem; font-weight: 600; }
+.route-leg { display: flex; align-items: flex-start; gap: 9px; font-size: .74rem; line-height: 1.5; }
+.route-leg .leg-ico { font-size: .95rem; flex: none; width: 24px; text-align: center; }
+.line-chip {
+  flex: none; min-width: 26px; text-align: center; padding: 2px 7px;
+  border-radius: 6px; color: #fff; font-size: .7rem; font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0,0,0,.5); box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+}
+.route-rail { border-left: 2px dotted var(--border-strong); margin-left: 11px; padding-left: 14px;
+              display: flex; flex-direction: column; gap: 8px; }
+.tag-cheap { color: var(--sky); background: rgba(56,189,248,.14); }
+.tbl-scroll { max-height: 320px; overflow-y: auto; }
+.clickable { cursor: pointer; }
+
+/* ── Stat strip ───────────────────────────────────────────────── */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: var(--sp-sm); }
+.stat { background: var(--bg-sunken); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 9px 11px; }
+.stat-val { font-size: 1.1rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.stat-unit { font-size: .66rem; color: var(--text-3); font-weight: 500; margin-left: 2px; }
+.stat-label { font-size: .62rem; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; }
+
+/* ── Map ──────────────────────────────────────────────────────── */
+.map-card { position: relative; }
+#map { height: clamp(380px, 56vh, 660px); width: 100%; background: #0a1020; z-index: 1; }
+.leaflet-container { font-family: 'Inter', sans-serif; background: #0a1020; }
+/* Dark-mode the raster tiles to match the rest of the UI. */
+/* Each basemap supplies its own tone; see TILE_PROVIDERS.filter. */
+#map .leaflet-tile-pane { filter: var(--tile-filter, none); }
+.leaflet-control-attribution { background: rgba(6,11,24,.8) !important; color: var(--text-3) !important; font-size: .62rem !important; }
+.leaflet-control-attribution a { color: var(--text-2) !important; }
+.leaflet-bar { border: 1px solid var(--border) !important; box-shadow: none !important; }
+.leaflet-bar a { background: var(--bg-elevated) !important; color: var(--text-1) !important; border-bottom-color: var(--border) !important; }
+.leaflet-bar a:hover { background: var(--bg-hover) !important; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--bg-elevated); color: var(--text-1); border: 1px solid var(--border-strong); box-shadow: 0 8px 28px -8px rgba(0,0,0,.7); }
+.leaflet-popup-content-wrapper { border-radius: var(--radius-md); backdrop-filter: blur(10px); }
+.leaflet-popup-content { margin: 11px 13px; font-size: .8rem; line-height: 1.5; }
+.leaflet-popup-close-button { color: var(--text-3) !important; }
+
+.pin-wrap, .pin-draft { background: transparent !important; border: 0 !important; }
+.pin-dot {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50% 50% 50% 4px;
+  transform: rotate(-45deg);
+  background: var(--c, var(--blue));
+  border: 2px solid rgba(255,255,255,.78);
+  box-shadow: 0 3px 10px rgba(0,0,0,.6);
+  font-size: .78rem; line-height: 1;
+}
+.pin-dot > span { transform: rotate(45deg); }
+.pin-dot.numbered { font-weight: 700; font-size: .82rem; color: #fff; border-radius: 50%; transform: none; }
+.pin-dot.numbered > span { transform: none; }
+.pin-dot.is-base { border-color: var(--emerald-light); box-shadow: 0 0 0 3px var(--emerald-glow), 0 3px 10px rgba(0,0,0,.6); }
+.pin-draft-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px dashed var(--emerald-light); background: var(--emerald-glow); animation: pulse 1.6s infinite var(--ease); }
+@keyframes pulse { 0%,100% { transform: scale(1); opacity: .9 } 50% { transform: scale(1.22); opacity: .55 } }
+
+.pop-title { font-weight: 700; font-size: .86rem; margin-bottom: 2px; }
+.pop-sub { font-size: .66rem; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+.pop-body { font-size: .74rem; color: var(--text-2); margin-top: 6px; white-space: pre-wrap; max-width: 220px; }
+.pop-acts { display: flex; gap: 4px; margin-top: 9px; flex-wrap: wrap; }
+
+.map-foot {
+  display: flex; align-items: center; gap: var(--sp-sm); flex-wrap: wrap;
+  padding: 9px var(--sp-md); border-top: 1px solid var(--border);
+  background: linear-gradient(0deg, rgba(255,255,255,.02), transparent);
+}
+.map-fallback {
+  position: absolute; inset: 46px 0 0 0; z-index: 400;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-sm);
+  background: rgba(6,11,24,.93); backdrop-filter: blur(3px); padding: var(--sp-lg); text-align: center;
+}
+.search-wrap { position: relative; flex: 1; min-width: 150px; }
+.geo-row { display: flex; gap: var(--sp-sm); position: relative; }
+.geo-row .inp { flex: 1; min-width: 0; }
+.geo-row .btn { flex: none; }
+#pf-geo-results { position: static; margin-top: 5px; max-height: 220px; }
+.search-results {
+  position: absolute; top: calc(100% + 5px); left: 0; right: 0; z-index: 1000;
+  background: var(--bg-elevated); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md); backdrop-filter: blur(14px);
+  box-shadow: 0 14px 36px -10px rgba(0,0,0,.8); max-height: 260px; overflow-y: auto;
+}
+.search-item { padding: 8px 11px; cursor: pointer; font-size: .76rem; border-bottom: 1px solid var(--border); }
+.search-item:last-child { border-bottom: 0; }
+.search-item:hover { background: var(--bg-hover); }
+.search-item .si-sub { font-size: .66rem; color: var(--text-3); margin-top: 1px; }
+
+/* ── Focus strip — the focused day stays visible from every tab ── */
+.focus-rail { display: flex; align-items: stretch; overflow-x: auto; padding: var(--sp-sm) var(--sp-md) var(--sp-md); }
+.focus-stop {
+  flex: none; min-width: 126px; max-width: 168px; cursor: pointer;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-top: 3px solid var(--cat, var(--border)); border-radius: var(--radius-sm);
+  padding: 7px 9px; transition: all .15s var(--ease);
+}
+.focus-stop:hover { background: var(--bg-hover); border-color: var(--border-strong); transform: translateY(-2px); }
+.fs-time { font-size: .74rem; font-weight: 700; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 5px; }
+.fs-name { font-size: .72rem; color: var(--text-2); margin-top: 3px; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.fs-note { font-size: .64rem; color: var(--text-3); margin-top: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; border-top: 1px solid var(--border); padding-top: 3px; }
+.focus-leg {
+  flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 0 8px; min-width: 70px; color: var(--text-3); font-size: .64rem; text-align: center;
+}
+.focus-leg .fl-ico { font-size: .92rem; }
+.focus-leg .fl-txt { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.focus-leg::before {
+  content: ''; display: block; width: 100%; height: 1px; margin-bottom: 4px;
+  background: repeating-linear-gradient(90deg, var(--border-strong) 0 4px, transparent 4px 8px);
+}
+.focus-leg.clickable { cursor: pointer; border-radius: 8px; transition: background .14s var(--ease); }
+.focus-leg.clickable:hover { background: var(--bg-hover); }
+.focus-leg.on { background: rgba(59,130,246,.16); box-shadow: inset 0 0 0 1px rgba(59,130,246,.4); }
+.fl-lines { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; margin: 2px 0 1px; }
+.line-chip.sm { min-width: 18px; padding: 1px 5px; font-size: .62rem; border-radius: 5px; }
+.fl-pending { opacity: .5; font-size: .58rem; letter-spacing: .04em; }
+.num-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; border-radius: 50%; flex: none;
+  background: var(--blue); color: #fff; font-size: .6rem; font-weight: 700;
+}
+
+/* ── Schedule ─────────────────────────────────────────────────── */
+.day-card { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: var(--sp-sm); overflow: hidden; }
+.day-card.focused { border-color: var(--border-active); box-shadow: 0 0 20px -8px var(--emerald-glow); }
+.day-head { display: flex; align-items: center; gap: var(--sp-sm); padding: 9px 11px; background: linear-gradient(180deg, rgba(255,255,255,.03), transparent); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.day-date { font-size: .84rem; font-weight: 700; letter-spacing: -.01em; }
+.day-dow { font-size: .64rem; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; }
+.day-city { font-size: .62rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: var(--blue-glow); color: #93c5fd; border: 1px solid rgba(59,130,246,.3); }
+.day-body { padding: 10px 11px; display: flex; flex-direction: column; }
+.day-totals { display: flex; gap: var(--sp-md); flex-wrap: wrap; padding: 7px 11px; border-top: 1px solid var(--border); background: var(--bg-sunken); font-size: .68rem; color: var(--text-3); }
+.day-totals b { color: var(--text-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+.day-title-inp { background: transparent; border: 1px solid transparent; border-radius: 6px; font-size: .76rem; color: var(--text-2); padding: 2px 5px; flex: 1; min-width: 120px; }
+.day-title-inp:hover { border-color: var(--border); }
+.day-title-inp:focus { outline: none; border-color: var(--border-active); background: var(--bg-sunken); color: var(--text-1); }
+
+.item { display: flex; gap: 7px; padding: 8px 9px; background: var(--bg-sunken); border: 1px solid var(--border); border-left: 3px solid var(--cat, var(--border)); border-radius: var(--radius-sm); }
+.item-grip { display: flex; flex-direction: column; gap: 2px; flex: none; }
+.item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.item-top { display: flex; gap: 6px; align-items: center; }
+.item-time { width: 124px; flex: none; }
+.item-dur { width: 72px; flex: none; }
+.item-ico { font-size: 1rem; flex: none; }
+.item-row2 { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.leg-bar { display: flex; align-items: center; gap: 7px; padding: 6px 9px 6px 26px; font-size: .68rem; color: var(--text-3); position: relative; flex-wrap: wrap; }
+.leg-bar::before { content: ''; position: absolute; left: 12px; top: 0; bottom: 0; width: 1px; background: repeating-linear-gradient(180deg, var(--border-strong) 0 3px, transparent 3px 7px); }
+.leg-bar select { width: auto; padding: 3px 22px 3px 7px; font-size: .7rem; background-position: calc(100% - 13px) 52%, calc(100% - 8px) 52%; }
+.leg-txt { font-variant-numeric: tabular-nums; }
+.warn-chip { font-size: .62rem; font-weight: 600; color: #fcd34d; background: var(--amber-glow); border: 1px solid rgba(245,158,11,.28); border-radius: 99px; padding: 1px 7px; white-space: nowrap; }
+.ok-chip { font-size: .62rem; font-weight: 600; color: var(--emerald-light); background: rgba(16,185,129,.12); border: 1px solid var(--border-active); border-radius: 99px; padding: 1px 7px; white-space: nowrap; }
+
+details.box { background: var(--bg-sunken); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+details.box > summary { padding: 8px 11px; cursor: pointer; font-size: .74rem; font-weight: 600; color: var(--text-2); list-style: none; display: flex; align-items: center; gap: 7px; }
+details.box > summary::-webkit-details-marker { display: none; }
+details.box > summary::before { content: '▸'; color: var(--text-3); transition: transform .15s var(--ease); }
+details.box[open] > summary::before { transform: rotate(90deg); }
+details.box > summary:hover { color: var(--text-1); }
+.box-body { padding: 0 11px 11px; display: flex; flex-direction: column; gap: var(--sp-sm); }
+
+.settings-grid { display: grid; grid-template-columns: 1.5fr repeat(5, 1fr); gap: 5px; align-items: center; }
+.settings-grid .sg-head { font-size: .56rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--text-3); text-align: center; line-height: 1.25; }
+.settings-grid .sg-mode { display: flex; align-items: center; gap: 5px; font-weight: 600; font-size: .7rem; }
+.settings-grid input { width: 100%; padding: 4px 3px; text-align: center; font-size: .72rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px; color: var(--text-1); font-variant-numeric: tabular-nums; }
+.settings-grid input:focus { outline: none; border-color: var(--border-active); }
+
+.app-footer { padding: 0 var(--sp-lg) var(--sp-lg); max-width: 1900px; margin: 0 auto; }
+.app-footer .card-body { font-size: .7rem; color: var(--text-3); line-height: 1.7; }
+.app-footer b { color: var(--text-2); font-weight: 600; }
+.app-footer code { background: var(--bg-sunken); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: .95em; }
+.status { font-size: .72rem; color: var(--emerald-light); min-height: 1.05em; }
+.status.err { color: #fca5a5; }
+.mono { font-variant-numeric: tabular-nums; }
+
+
+/* ── Phone ─────────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  html { font-size: 16px; }
+  .layout { padding: var(--sp-sm); gap: var(--sp-sm); }
+  .app-header { padding: var(--sp-sm) var(--sp-md); gap: var(--sp-sm); row-gap: var(--sp-sm); }
+  .hdr-brand { flex: 1 1 auto; }
+  .trip-name { max-width: 46vw; }
+  .city-tabs { order: 3; width: 100%; }
+  .city-tab { flex: 1; justify-content: center; padding: 10px 6px; font-size: .78rem; }
+  .city-tab .cnt { display: none; }
+  .hdr-actions { order: 4; width: 100%; }
+  .hdr-actions .btn { flex: 1; justify-content: center; padding: 10px 8px; }
+
+  #map { height: 44vh; }
+  .map-foot { padding: 10px var(--sp-md); }
+  .panel-tab { padding: 11px 4px; }
+
+  /* Thumb-sized controls: the icon buttons were built for a mouse. */
+  .btn-icon { min-width: 44px; min-height: 40px; justify-content: center; font-size: .95rem; }
+  .pin-row { flex-wrap: wrap; }
+  .pin-ico { order: 0; }
+  .pin-main { order: 1; flex: 1 1 60%; }
+  .pin-acts { order: 2; width: 100%; justify-content: flex-end; gap: 6px; padding-top: 4px; }
+  .item-grip .btn-icon { min-height: 34px; }
+
+  .item-top { flex-wrap: wrap; }
+  .item-time { width: 128px; }
+  .item-dur { width: 86px; }
+  .focus-stop { min-width: 148px; }
+  .focus-leg { min-width: 78px; }
+  .geo-row { flex-wrap: wrap; }
+  .geo-row .btn { width: 100%; justify-content: center; }
+  .settings-grid { grid-template-columns: 1.3fr repeat(5, 1fr); gap: 4px; }
+  .settings-grid .sg-mode span { display: none; }
+  .settings-grid input { padding: 7px 2px; }
+  .day-head { row-gap: 6px; }
+  .tbl th, .tbl td { padding: 9px 6px; }
+  .route-leg { font-size: .78rem; }
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="hdr-brand">
+    <span class="hdr-logo">🗺️</span>
+    <div>
+      <input id="trip-name" class="trip-name" value="My Trip" aria-label="Trip name">
+      <div class="hdr-sub" id="hdr-sync">Trip Organizer</div>
+    </div>
+  </div>
+
+  <nav class="city-tabs" id="city-tabs"></nav>
+
+  <div class="hdr-actions">
+    <button class="btn" id="btn-copy" title="Copy the whole itinerary as plain text">📋 Copy itinerary</button>
+    <button class="btn" id="btn-export" title="Download everything as JSON">⬇ Export</button>
+    <button class="btn" id="btn-import" title="Load a previously exported JSON file">⬆ Import</button>
+    <input type="file" id="file-import" accept=".json,application/json" hidden>
+  </div>
+</header>
+
+<div id="storage-warn" class="banner hidden"></div>
+
+<main class="layout">
+
+  <!-- ── Left column: the four working panels ──────────────────── -->
+  <section class="col-left">
+    <nav class="panel-tabs" id="panel-tabs">
+      <button class="panel-tab" data-panel="pins"><span class="ico">📍</span><span>Places</span><span class="badge" id="badge-pins">0</span></button>
+      <button class="panel-tab" data-panel="travel"><span class="ico">🚆</span><span>Travel</span><span class="badge" id="badge-travel">5 modes</span></button>
+      <button class="panel-tab" data-panel="schedule"><span class="ico">🗓️</span><span>Schedule</span><span class="badge" id="badge-schedule">0 days</span></button>
+      <button class="panel-tab" data-panel="notes"><span class="ico">📝</span><span>Notes</span><span class="badge" id="badge-notes">—</span></button>
+    </nav>
+
+    <!-- Places ------------------------------------------------- -->
+    <div class="panel" id="panel-pins">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title" id="pinform-title">Add a place</span>
+          <span class="spacer"></span>
+          <button class="btn btn-sm" id="btn-pin-cancel" hidden>Cancel edit</button>
+        </div>
+        <div class="card-body">
+          <div class="field">
+            <label for="pf-name">Name</label>
+            <input class="inp" id="pf-name" placeholder="Le Comptoir du Relais" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="pf-cat">Category</label>
+            <select class="inp" id="pf-cat"></select>
+          </div>
+          <div class="field">
+            <label for="pf-geo">Address or place name</label>
+            <div class="geo-row">
+              <input class="inp" id="pf-geo" placeholder="9 Carrefour de l&#39;Odéon, Paris" autocomplete="off">
+              <button class="btn" id="btn-geo" title="Look up this address and fill in the coordinates">🔍 Find</button>
+            </div>
+            <div class="search-results hidden" id="pf-geo-results"></div>
+            <div class="status" id="pf-geo-status"></div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="pf-lat">Latitude</label>
+              <input class="inp mono" id="pf-lat" placeholder="48.8566" inputmode="decimal" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="pf-lng">Longitude</label>
+              <input class="inp mono" id="pf-lng" placeholder="2.3522" inputmode="decimal" autocomplete="off">
+            </div>
+          </div>
+          <div class="card-note" id="pf-coord-hint">Type an address above, click the map, or enter coordinates.</div>
+          <div class="field">
+            <label for="pf-addr">Address / detail</label>
+            <input class="inp" id="pf-addr" placeholder="9 Carrefour de l'Odéon, 75006" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="pf-notes">Notes</label>
+            <textarea class="inp" id="pf-notes" placeholder="Booking ref, opening hours, what to order, cost…"></textarea>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btn-pin-save">Save place</button>
+            <button class="btn" id="btn-pin-clear">Clear</button>
+          </div>
+          <div class="status" id="pin-status"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Places in <span id="pins-city-name">Paris</span></span>
+          <span class="spacer"></span>
+          <span class="card-note" id="pins-count">0</span>
+        </div>
+        <div class="card-body">
+          <input class="inp" id="pin-filter" placeholder="Filter by name, address or note…" autocomplete="off">
+          <div class="chip-row" id="cat-chips"></div>
+          <div id="pin-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Travel ------------------------------------------------- -->
+    <div class="panel hidden" id="panel-travel">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Distance &amp; travel time</span>
+          <span class="spacer"></span>
+          <button class="btn btn-sm" id="btn-swap" title="Swap origin and destination">⇄ Swap</button>
+        </div>
+        <div class="card-body">
+          <div class="field">
+            <label for="tv-from">From</label>
+            <select class="inp" id="tv-from"></select>
+          </div>
+          <div class="field">
+            <label for="tv-to">To</label>
+            <select class="inp" id="tv-to"></select>
+          </div>
+          <div class="field">
+            <label for="tv-when">Leave at</label>
+            <input class="inp" id="tv-when" type="datetime-local">
+            <div class="card-note">Bus and train routes are looked up against the real timetable for this time.</div>
+          </div>
+          <div class="stats" id="tv-stats"></div>
+          <table class="tbl" id="tv-table"></table>
+          <div id="tv-route"></div>
+          <div class="card-note" id="tv-note"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Every place from <span id="tv-base-name">base</span></span>
+          <span class="spacer"></span>
+          <select class="inp btn-sm" id="tv-matrix-mode" style="width:auto"></select>
+        </div>
+        <div class="card-body">
+          <div class="tbl-scroll"><table class="tbl" id="tv-matrix"></table></div>
+        </div>
+      </div>
+
+      <details class="box" id="tv-settings-box">
+        <summary>Estimator settings for <span id="tv-settings-city">Paris</span></summary>
+        <div class="box-body">
+          <div class="settings-grid" id="tv-settings"></div>
+          <div class="card-note">
+            <b>How a time is produced:</b> straight-line distance × <b>detour</b> ÷ <b>speed</b>, plus a fixed
+            <b>wait</b> for walking to the stop, headway and boarding. Fare = <b>base</b> + <b>per&nbsp;km</b>.
+            These are editable estimates for planning, <b>not</b> quoted tariffs or a routing engine — check
+            a live journey planner before you rely on a connection.
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-sm" id="btn-settings-reset">Reset this city to defaults</button>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <!-- Schedule ----------------------------------------------- -->
+    <div class="panel hidden" id="panel-schedule">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Add a day</span></div>
+        <div class="card-body">
+          <div class="row">
+            <div class="field">
+              <label for="sd-date">Date</label>
+              <input class="inp" id="sd-date" type="date">
+            </div>
+            <div class="field">
+              <label for="sd-city">City</label>
+              <select class="inp" id="sd-city"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="sd-title">Label (optional)</label>
+            <input class="inp" id="sd-title" placeholder="Arrival day / Museums / Day trip" autocomplete="off">
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btn-day-add">Add day</button>
+            <button class="btn btn-sm" id="btn-sort-days">Sort by date</button>
+          </div>
+          <div class="status" id="day-status"></div>
+        </div>
+      </div>
+      <div class="sched-bar">
+        <div class="chip-row" id="sched-scope"></div>
+        <span class="spacer"></span>
+        <span class="card-note" id="sched-note"></span>
+      </div>
+      <div id="day-list"></div>
+    </div>
+
+    <!-- Notes -------------------------------------------------- -->
+    <div class="panel hidden" id="panel-notes">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Trip notes</span></div>
+        <div class="card-body">
+          <textarea class="inp" id="nt-trip" style="min-height:130px" placeholder="Flight numbers, passport details, who to call, budget…"></textarea>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title"><span id="nt-city-name">Paris</span> notes</span></div>
+        <div class="card-body">
+          <textarea class="inp" id="nt-city" style="min-height:130px" placeholder="Transit pass to buy, neighbourhood to avoid after dark, market days…"></textarea>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Sync across devices</span>
+          <span class="spacer"></span>
+          <span class="card-note" id="gh-state">Off</span>
+        </div>
+        <div class="card-body">
+          <div class="card-note">
+            Keeps this trip identical on your laptop and your phone by storing it as one file in a
+            <b>private</b> GitHub repository you own. Set it up once on each device.
+          </div>
+          <div class="field">
+            <label for="gh-repo">Private repository</label>
+            <input class="inp" id="gh-repo" placeholder="yourname/trip-data" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="gh-path">File</label>
+              <input class="inp" id="gh-path" value="trip.json" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="field">
+              <label for="gh-branch">Branch</label>
+              <input class="inp" id="gh-branch" value="main" autocomplete="off" spellcheck="false">
+            </div>
+          </div>
+          <div class="field">
+            <label for="gh-token">Access token</label>
+            <input class="inp" id="gh-token" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btn-gh-connect">Connect</button>
+            <button class="btn" id="btn-gh-sync">Sync now</button>
+            <button class="btn btn-danger" id="btn-gh-forget">Forget token</button>
+          </div>
+          <div class="status" id="gh-status"></div>
+          <div class="card-note">
+            The token is stored in this browser only and never becomes part of the page, so publishing
+            the app cannot expose it. Give it <b>Contents: Read and write</b> on that one repository and
+            nothing else. Whichever device saved most recently wins, so finish editing on one before
+            switching to the other.
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">At a glance</span></div>
+        <div class="card-body" id="nt-glance"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Right column: map + the focused day ───────────────────── -->
+  <section class="col-right">
+    <div class="card map-card">
+      <div class="card-head">
+        <span class="card-title" id="map-city-title">Paris</span>
+        <div class="search-wrap">
+          <input class="inp" id="map-search" placeholder="Search an address or landmark…" autocomplete="off">
+          <div class="search-results hidden" id="search-results"></div>
+        </div>
+        <button class="btn btn-sm on" id="btn-drop" title="When on, clicking the map fills the coordinates in the Places form">📍 Click to pin</button>
+        <button class="btn btn-sm" id="btn-fit" title="Zoom to fit every place in this city">⤢ Fit</button>
+      </div>
+      <div id="map"></div>
+      <div class="map-fallback hidden" id="map-fallback">
+        <div style="font-size:2rem;opacity:.6">🛰️</div>
+        <div class="card-note" id="map-fallback-msg"></div>
+      </div>
+      <div class="map-foot" id="map-legend"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Focused day</span>
+        <span class="spacer"></span>
+        <span class="card-note" id="focus-summary">Nothing focused</span>
+        <button class="btn btn-sm hidden" id="btn-focus-clear">Clear</button>
+      </div>
+      <div id="focus-rail-wrap"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="app-footer">
+  <div class="card">
+    <div class="card-head"><span class="card-title">How this works</span></div>
+    <div class="card-body">
+      <div>
+        <b>Everything is stored in this browser</b> under <code>tripOrganizer.v1</code>. That survives a reload and
+        works from a <code>file://</code> page, but it is per-browser-profile and is wiped by "clear browsing data" —
+        so <b>Export</b> is the durable copy, not a nicety.
+      </div>
+      <div>
+        <b>Travel times are modelled, not routed.</b> There is no directions API behind this page. Each leg is
+        great-circle distance × a per-mode detour factor ÷ a per-mode speed, plus a fixed wait/boarding overhead;
+        fares are base + per&nbsp;km. Every coefficient is editable per city under <b>Travel → Estimator settings</b>.
+        Expect the right ballpark for planning, and confirm anything time-critical with RATP / Stan / TMB or a
+        live journey planner.
+      </div>
+      <div>
+        <b>Seeded landmark coordinates are approximate</b> centroids for well-known sites, good to roughly a block.
+        Your hotel, restaurants and bookings are yours to add — click the map, or search an address.
+      </div>
+      <div>
+        <b>If the map fills with "Access blocked" or "API key required" tiles, change the Basemap</b> dropdown
+        under the map. Tile hosts refuse traffic for their own reasons and some do it with a valid image rather
+        than an error, so the page checks for that and tells you. Map data ©
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+        contributors; tiles as credited in the map's corner; address search by Nominatim. Tiles and search need
+        network access — the rest of the page, including every distance, time and schedule, works offline.
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   Trip Organizer — single-file app. No build step, no framework.
+
+   Structure, in order:
+     1. CONFIG      cities, categories, travel modes, seed data
+     2. STATE       the single mutable `S` object + localStorage
+     3. UTIL        escaping, formatting, dates, geometry
+     4. TRAVEL      the distance/time/fare estimator
+     5. MAP         Leaflet wiring (degrades if the CDN is unreachable)
+     6. PANELS      places, travel, schedule, notes
+     7. IO          export / import / clipboard
+     8. INIT
+
+   Re-render rule, so typing never loses focus: free text saves on
+   `input` and does NOT re-render. Anything a computation depends on
+   (select, number, date, time) re-renders on `change`, which fires on
+   blur — never per keystroke.
+   ══════════════════════════════════════════════════════════════════ */
+(function () {
+'use strict';
+
+/* ─── 1. CONFIG ─────────────────────────────────────────────────── */
+
+const STORE_KEY = 'tripOrganizer.v1';
+
+const CATS = {
+  hotel:      { label: 'Stay',        icon: '🏨', color: '#8b5cf6' },
+  restaurant: { label: 'Restaurant',  icon: '🍽️', color: '#f59e0b' },
+  cafe:       { label: 'Café / Bar',  icon: '☕', color: '#f472b6' },
+  sight:      { label: 'Destination', icon: '📍', color: '#3b82f6' },
+  shop:       { label: 'Shop',        icon: '🛍️', color: '#10b981' },
+  transit:    { label: 'Transit',     icon: '🚉', color: '#38bdf8' },
+  other:      { label: 'Other',       icon: '⭐', color: '#94a3b8' }
+};
+const CAT_ORDER = ['hotel', 'restaurant', 'cafe', 'sight', 'shop', 'transit', 'other'];
+
+const MODE_ORDER = ['walk', 'bike', 'bus', 'rail', 'taxi'];
+const MODE_ICON  = { walk: '🚶', bike: '🚲', bus: '🚌', rail: '🚇', taxi: '🚕' };
+
+/* Per-city estimator defaults.
+     speed  km/h, door-to-door average including stops and traffic
+     detour multiplier on great-circle distance (streets are not straight)
+     wait   minutes of fixed overhead: reach the stop, headway, boarding
+     base   fare floor in EUR;  perKm  marginal fare in EUR/km
+   Representative planning figures, not quoted tariffs — editable in the UI. */
+const CITIES = {
+  paris: {
+    name: 'Paris', country: 'France', flag: '🇫🇷',
+    center: [48.8566, 2.3522], zoom: 12, currency: '€',
+    modeLabels: { walk: 'Walk', bike: 'Bike (Vélib’)', bus: 'Bus', rail: 'Métro / RER', taxi: 'Taxi' },
+    defaults: {
+      walk: { speed: 4.8, detour: 1.25, wait: 0,  base: 0,    perKm: 0    },
+      bike: { speed: 13,  detour: 1.25, wait: 3,  base: 1.00, perKm: 0    },
+      bus:  { speed: 13,  detour: 1.35, wait: 9,  base: 2.00, perKm: 0    },
+      rail: { speed: 27,  detour: 1.15, wait: 8,  base: 2.50, perKm: 0    },
+      taxi: { speed: 17,  detour: 1.30, wait: 5,  base: 3.00, perKm: 1.30 }
+    }
+  },
+  nancy: {
+    name: 'Nancy', country: 'France', flag: '🇫🇷',
+    center: [48.6921, 6.1844], zoom: 14, currency: '€',
+    modeLabels: { walk: 'Walk', bike: 'Bike', bus: 'Bus / Tram', rail: 'TER train', taxi: 'Taxi' },
+    defaults: {
+      walk: { speed: 4.9, detour: 1.22, wait: 0,  base: 0,    perKm: 0    },
+      bike: { speed: 13,  detour: 1.22, wait: 3,  base: 0,    perKm: 0    },
+      bus:  { speed: 17,  detour: 1.30, wait: 8,  base: 1.60, perKm: 0    },
+      rail: { speed: 22,  detour: 1.10, wait: 12, base: 2.00, perKm: 0    },
+      taxi: { speed: 22,  detour: 1.28, wait: 6,  base: 2.60, perKm: 1.20 }
+    }
+  },
+  barcelona: {
+    name: 'Barcelona', country: 'Spain', flag: '🇪🇸',
+    center: [41.3874, 2.1686], zoom: 13, currency: '€',
+    modeLabels: { walk: 'Walk', bike: 'Bike (Bicing)', bus: 'Bus', rail: 'Metro', taxi: 'Taxi' },
+    defaults: {
+      /* The Eixample grid means less detour than a medieval street plan. */
+      walk: { speed: 4.9, detour: 1.18, wait: 0, base: 0,    perKm: 0    },
+      bike: { speed: 13,  detour: 1.18, wait: 3, base: 0,    perKm: 0    },
+      bus:  { speed: 12,  detour: 1.32, wait: 8, base: 2.65, perKm: 0    },
+      rail: { speed: 28,  detour: 1.15, wait: 8, base: 2.65, perKm: 0    },
+      taxi: { speed: 19,  detour: 1.25, wait: 5, base: 2.60, perKm: 1.25 }
+    }
+  }
+};
+const CITY_ORDER = ['paris', 'nancy', 'barcelona'];
+
+/* Basemaps. OpenStreetMap's own tile servers are deliberately NOT here:
+   they are volunteer-run, their usage policy excludes general apps, and
+   they answer a disallowed client with a 200 OK "Access blocked" image
+   rather than an error. CARTO's free basemaps now require an API key.
+   The defaults below are commercial CDNs that serve anonymous traffic;
+   the community styles are offered too, flagged as volunteer-run.
+     invert  light street art turned dark to match this UI
+     probe   run the placeholder check against this host  */
+const ESRI = 'https://services.arcgisonline.com/ArcGIS/rest/services/';
+/* Turns a light street style into a dark one. Only for styles that are
+   drawn light; a dark or aerial basemap must never be inverted. */
+const INVERT = 'invert(1) hue-rotate(185deg) brightness(.94) contrast(.92) saturate(.8)';
+const TILE_PROVIDERS = [
+  /* Esri's Dark Gray Canvas is a basemap built for data overlay: muted
+     geography, labels in a separate reference layer. It is the only style
+     here that needs no filter to sit in a dark UI.
+     maxNative: the deepest zoom VERIFIED to return real imagery. Past it
+     Esri answers 200 with a "Map data not yet available" card, so Leaflet
+     must upscale instead of requesting it. Raise only after checking. */
+  { key: 'esriDark', label: 'Dark canvas', filter: 'brightness(.72) saturate(.85)', probe: true, maxNative: 16,
+    url: ESRI + 'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    ref: ESRI + 'Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+    attr: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors' },
+  { key: 'esriStreet', label: 'Street', probe: true, maxNative: 18,
+    url: ESRI + 'World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    attr: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors' },
+  { key: 'esriSat', label: 'Satellite', filter: 'brightness(.88)', probe: true, maxNative: 18,
+    url: ESRI + 'World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    ref: ESRI + 'Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+    attr: 'Tiles &copy; Esri &mdash; Maxar, Earthstar Geographics' },
+  { key: 'osmfr', label: 'OSM France (volunteer)', filter: INVERT, probe: true, maxNative: 19,
+    url: 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', subdomains: 'abc',
+    attr: '&copy; OpenStreetMap contributors &mdash; tiles by OpenStreetMap France' },
+  { key: 'osmde', label: 'OSM Germany (volunteer)', filter: INVERT, probe: true, maxNative: 18,
+    url: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
+    attr: '&copy; OpenStreetMap contributors &mdash; tiles by OpenStreetMap Deutschland' },
+  { key: 'topo', label: 'Topographic (volunteer)', filter: 'brightness(.85) saturate(.9)', probe: true, maxNative: 17,
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', subdomains: 'abc',
+    attr: '&copy; OpenStreetMap contributors, SRTM &mdash; &copy; OpenTopoMap (CC-BY-SA)' }
+];
+
+/* Seeded landmarks so the map is never empty. Approximate centroids of
+   well-known sites — good to about a block, not surveyed positions.
+   No hotels or restaurants are seeded: those are the user's to add. */
+const SEED_PINS = {
+  paris: [
+    { name: 'Eiffel Tower',        cat: 'sight',   lat: 48.8584, lng: 2.2945, addr: 'Champ de Mars, 7e' },
+    { name: 'Louvre Museum',       cat: 'sight',   lat: 48.8606, lng: 2.3376, addr: 'Rue de Rivoli, 1er' },
+    { name: 'Notre-Dame',          cat: 'sight',   lat: 48.8530, lng: 2.3499, addr: 'Île de la Cité, 4e' },
+    { name: 'Sacré-Cœur',          cat: 'sight',   lat: 48.8867, lng: 2.3431, addr: 'Montmartre, 18e' },
+    { name: 'Arc de Triomphe',     cat: 'sight',   lat: 48.8738, lng: 2.2950, addr: 'Place Charles de Gaulle, 8e' },
+    { name: 'Gare du Nord',        cat: 'transit', lat: 48.8809, lng: 2.3553, addr: 'Eurostar / TGV / RER' },
+    { name: 'Gare de l’Est',  cat: 'transit', lat: 48.8768, lng: 2.3592, addr: 'TGV to Nancy' }
+  ],
+  nancy: [
+    { name: 'Place Stanislas',     cat: 'sight',   lat: 48.6937, lng: 6.1834, addr: 'UNESCO World Heritage square' },
+    { name: 'Musée des Beaux-Arts',cat: 'sight',   lat: 48.6933, lng: 6.1819, addr: '3 Place Stanislas' },
+    { name: 'Parc de la Pépinière',cat: 'sight',   lat: 48.6960, lng: 6.1849, addr: 'Behind Place Stanislas' },
+    { name: 'Basilique St-Epvre',  cat: 'sight',   lat: 48.6959, lng: 6.1808, addr: 'Vieille Ville' },
+    { name: 'Villa Majorelle',     cat: 'sight',   lat: 48.6836, lng: 6.1683, addr: 'Art Nouveau, 1 Rue Louis Majorelle' },
+    { name: 'Gare de Nancy-Ville', cat: 'transit', lat: 48.6897, lng: 6.1744, addr: 'TGV / TER' }
+  ],
+  barcelona: [
+    { name: 'Sagrada Família',     cat: 'sight',   lat: 41.4036, lng: 2.1744, addr: 'Carrer de Mallorca 401' },
+    { name: 'Park Güell',          cat: 'sight',   lat: 41.4145, lng: 2.1527, addr: 'Carrer d’Olot' },
+    { name: 'Casa Batlló',         cat: 'sight',   lat: 41.3917, lng: 2.1650, addr: 'Passeig de Gràcia 43' },
+    { name: 'Plaça de Catalunya',  cat: 'sight',   lat: 41.3870, lng: 2.1700, addr: 'Top of La Rambla' },
+    { name: 'Barceloneta beach',   cat: 'sight',   lat: 41.3785, lng: 2.1925, addr: 'Passeig Marítim' },
+    { name: 'Barcelona Sants',     cat: 'transit', lat: 41.3792, lng: 2.1400, addr: 'AVE / Rodalies hub' }
+  ]
+};
+
+/* ─── 2. STATE ──────────────────────────────────────────────────── */
+
+let S = null;                 /* the single mutable state object      */
+let storageOK = true;         /* false once localStorage has thrown   */
+let editingPinId = null;      /* place form is editing this id        */
+let draftLatLng = null;       /* preview marker for an unsaved place  */
+let saveTimer = null;
+
+function blankCity(key) {
+  return { pins: [], notes: '', settings: clone(CITIES[key].defaults), baseId: null };
+}
+
+function defaultState() {
+  const st = { v: 1, tripName: 'My Trip', activeCity: 'paris', activePanel: 'pins',
+               focusDayId: null, notes: '', cities: {}, days: [], catFilter: [], tiles: 'esriDark', schedFilter: 'city', updatedAt: 0 };
+  CITY_ORDER.forEach(function (k) {
+    st.cities[k] = blankCity(k);
+    SEED_PINS[k].forEach(function (p) {
+      st.cities[k].pins.push({ id: uid(), name: p.name, cat: p.cat, lat: p.lat, lng: p.lng,
+                               addr: p.addr, notes: '' });
+    });
+  });
+  /* One sample day, so the schedule's travel legs are discoverable. */
+  const pp = st.cities.paris.pins;
+  const find = function (n) { const f = pp.find(function (x) { return x.name === n; }); return f ? f.id : null; };
+  st.days.push({
+    id: uid(), date: todayISO(), city: 'paris', title: 'Sample day — edit or delete', notes: '',
+    items: [
+      { id: uid(), time: '09:30', pinId: find('Eiffel Tower'), place: '', dur: 90,  mode: 'walk', notes: 'Pre-booked lift ticket — arrive 15 min early.' },
+      { id: uid(), time: '11:45', pinId: find('Louvre Museum'), place: '', dur: 150, mode: 'rail', notes: '' },
+      { id: uid(), time: '15:00', pinId: find('Notre-Dame'), place: '', dur: 45,  mode: 'walk', notes: 'Exterior only.' }
+    ]
+  });
+  /* Focus it, so the rail beside the map shows something on first open. */
+  st.focusDayId = st.days[0].id;
+  return st;
+}
+
+/* Defensive merge: a hand-edited or older export must not crash the app. */
+function normalize(raw) {
+  const st = defaultStateShape();
+  if (!raw || typeof raw !== 'object') return defaultState();
+
+  st.tripName  = typeof raw.tripName === 'string' ? raw.tripName : 'My Trip';
+  st.notes     = typeof raw.notes === 'string' ? raw.notes : '';
+  st.activeCity   = CITIES[raw.activeCity] ? raw.activeCity : 'paris';
+  st.activePanel  = ['pins', 'travel', 'schedule', 'notes'].indexOf(raw.activePanel) >= 0 ? raw.activePanel : 'pins';
+  st.tiles = providerBy(raw.tiles).key;
+  st.schedFilter = raw.schedFilter === 'all' ? 'all' : 'city';
+  st.updatedAt = (typeof raw.updatedAt === 'number' && isFinite(raw.updatedAt)) ? raw.updatedAt : 0;          /* unknown key falls back to the default */
+  st.catFilter = Array.isArray(raw.catFilter) ? raw.catFilter.filter(function (c) { return CATS[c]; }) : [];
+
+  CITY_ORDER.forEach(function (k) {
+    const src = (raw.cities && raw.cities[k]) || {};
+    const city = blankCity(k);
+    city.notes = typeof src.notes === 'string' ? src.notes : '';
+    if (Array.isArray(src.pins)) {
+      src.pins.forEach(function (p) {
+        if (!p) return;
+        const lat = parseFloat(p.lat), lng = parseFloat(p.lng);
+        if (!isFinite(lat) || !isFinite(lng)) return;
+        city.pins.push({
+          id: p.id || uid(),
+          name: String(p.name == null ? 'Unnamed' : p.name),
+          cat: CATS[p.cat] ? p.cat : 'other',
+          lat: lat, lng: lng,
+          addr: String(p.addr == null ? '' : p.addr),
+          notes: String(p.notes == null ? '' : p.notes)
+        });
+      });
+    }
+    /* Mode settings: keep every default key, accept finite overrides only. */
+    MODE_ORDER.forEach(function (m) {
+      const d = CITIES[k].defaults[m], got = (src.settings && src.settings[m]) || {};
+      Object.keys(d).forEach(function (f) {
+        const v = parseFloat(got[f]);
+        city.settings[m][f] = isFinite(v) && v >= 0 ? v : d[f];
+      });
+    });
+    const ids = city.pins.map(function (p) { return p.id; });
+    city.baseId = ids.indexOf(src.baseId) >= 0 ? src.baseId : null;
+    st.cities[k] = city;
+  });
+
+  if (Array.isArray(raw.days)) {
+    raw.days.forEach(function (d) {
+      if (!d) return;
+      const city = CITIES[d.city] ? d.city : 'paris';
+      const day = {
+        id: d.id || uid(),
+        date: /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : todayISO(),
+        city: city,
+        title: String(d.title == null ? '' : d.title),
+        notes: String(d.notes == null ? '' : d.notes),
+        items: []
+      };
+      const validIds = st.cities[city].pins.map(function (p) { return p.id; });
+      if (Array.isArray(d.items)) {
+        d.items.forEach(function (it) {
+          if (!it) return;
+          const dur = parseFloat(it.dur);
+          day.items.push({
+            id: it.id || uid(),
+            time: /^\d{2}:\d{2}$/.test(it.time) ? it.time : '',
+            pinId: validIds.indexOf(it.pinId) >= 0 ? it.pinId : null,
+            place: String(it.place == null ? '' : it.place),
+            dur: isFinite(dur) && dur >= 0 ? dur : 60,
+            mode: MODE_ORDER.indexOf(it.mode) >= 0 ? it.mode : 'walk',
+            notes: String(it.notes == null ? '' : it.notes)
+          });
+        });
+      }
+      st.days.push(day);
+    });
+  }
+  const dayIds = st.days.map(function (d) { return d.id; });
+  st.focusDayId = dayIds.indexOf(raw.focusDayId) >= 0 ? raw.focusDayId : null;
+  return st;
+}
+
+function defaultStateShape() {
+  const st = { v: 1, tripName: 'My Trip', activeCity: 'paris', activePanel: 'pins',
+               focusDayId: null, notes: '', cities: {}, days: [], catFilter: [], tiles: 'esriDark', schedFilter: 'city', updatedAt: 0 };
+  CITY_ORDER.forEach(function (k) { st.cities[k] = blankCity(k); });
+  return st;
+}
+
+function load() {
+  let raw = null;
+  try {
+    raw = localStorage.getItem(STORE_KEY);
+  } catch (e) {
+    storageOK = false;
+    return defaultState();
+  }
+  if (!raw) return defaultState();
+  try {
+    return normalize(JSON.parse(raw));
+  } catch (e) {
+    /* Corrupt payload: keep it out of the way rather than destroying it. */
+    try { localStorage.setItem(STORE_KEY + '.broken', raw); localStorage.removeItem(STORE_KEY); } catch (e2) {}
+    storageWarn('Saved data could not be read, so the organizer reset to defaults. The unreadable copy is kept under ' + STORE_KEY + '.broken');
+    return defaultState();
+  }
+}
+
+function save() {
+  S.updatedAt = Date.now();
+  ghSchedulePush();
+  if (!storageOK) return;
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(S));
+  } catch (e) {
+    storageOK = false;
+    storageWarn('This browser refused to save (private window, or storage full). The page still works, but nothing will survive a reload — use Export.');
+  }
+}
+function saveSoon() { clearTimeout(saveTimer); saveTimer = setTimeout(save, 400); }
+
+/* Which tab you are on, which city, which basemap: remembered on this
+   device, but NOT an edit to the trip. If these bumped `updatedAt` they
+   would upload, and merely opening the app on your phone and tapping
+   around would make the phone the "newer" copy — overwriting real work
+   done on the laptop. */
+function saveUi() {
+  if (!storageOK) return;
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { storageOK = false; }
+}
+
+function storageWarn(msg) {
+  const el = byId('storage-warn');
+  el.textContent = '⚠ ' + msg;
+  el.classList.remove('hidden');
+}
+
+/* ─── 3. UTIL ───────────────────────────────────────────────────── */
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function byId(id) { return document.getElementById(id); }
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+/* Every list in this app is built with innerHTML, and place names,
+   addresses and notes are user input. Nothing user-typed goes into
+   markup without passing through here. */
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function fmtKm(km) {
+  if (!isFinite(km)) return '—';
+  if (km < 1) return Math.round(km * 1000) + ' m';
+  return (km < 10 ? km.toFixed(2) : km.toFixed(1)) + ' km';
+}
+function fmtMin(min) {
+  if (!isFinite(min)) return '—';
+  const m = Math.round(min);
+  if (m <= 0) return '0 min';
+  if (m < 60) return m + ' min';
+  const h = Math.floor(m / 60), r = m % 60;
+  return r ? h + ' h ' + r + ' min' : h + ' h';
+}
+function fmtMoney(v, cur) {
+  if (!isFinite(v)) return '—';
+  if (v <= 0) return 'free';
+  return (cur || '€') + v.toFixed(2);
+}
+
+/* Dates: 'YYYY-MM-DD' must be built as a LOCAL date. new Date('2026-10-18')
+   parses as UTC, which lands on the previous day west of Greenwich. */
+function parseDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  if (!m) return null;
+  return new Date(+m[1], +m[2] - 1, +m[3]);
+}
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtDate(iso) {
+  const d = parseDate(iso);
+  if (!d) return iso || '—';
+  return d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear();
+}
+function weekday(iso) { const d = parseDate(iso); return d ? DOW[d.getDay()] : ''; }
+
+function hhmmToMin(t) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(t || '');
+  if (!m) return null;
+  const h = +m[1], mi = +m[2];
+  if (h > 23 || mi > 59) return null;
+  return h * 60 + mi;
+}
+function minToHHMM(v) {
+  if (!isFinite(v)) return '—';
+  let m = Math.round(v) % 1440;
+  if (m < 0) m += 1440;
+  return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+}
+
+/* ─── 4. TRAVEL ESTIMATOR ───────────────────────────────────────── */
+
+/* Great-circle distance, km. */
+function haversine(a, b) {
+  const R = 6371, rad = Math.PI / 180;
+  const dLat = (b[0] - a[0]) * rad, dLng = (b[1] - a[1]) * rad;
+  const h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+function settingsFor(cityKey) { return S.cities[cityKey || S.activeCity].settings; }
+
+/* One leg, one mode. Returns straight-line km, estimated route km,
+   minutes door-to-door and the fare. Two points under 30 m apart are
+   the same place: no distance, and no boarding overhead either. */
+function legFor(a, b, mode, cityKey) {
+  const m = settingsFor(cityKey)[mode];
+  const straight = haversine(a, b);
+  if (!m || straight < 0.03) return { straight: 0, routeKm: 0, min: 0, fare: 0, zero: true };
+  const routeKm = straight * m.detour;
+  const min = m.wait + (m.speed > 0 ? 60 * routeKm / m.speed : Infinity);
+  return { straight: straight, routeKm: routeKm, min: min, fare: m.base + m.perKm * routeKm, zero: false };
+}
+
+function allLegs(a, b, cityKey) {
+  const out = {};
+  MODE_ORDER.forEach(function (mo) { out[mo] = legFor(a, b, mo, cityKey); });
+  return out;
+}
+function modeLabel(mode, cityKey) {
+  return CITIES[cityKey || S.activeCity].modeLabels[mode] || mode;
+}
+
+/* ─── 5. MAP ────────────────────────────────────────────────────── */
+
+let map = null, pinLayer = null, routeLayer = null, draftMarker = null;
+let markerIndex = {};          /* pin id -> Leaflet marker            */
+let tileLayer = null;          /* the current basemap layer           */
+let navLayer = null;           /* the routed journey, drawn on demand */
+let refLayer = null;           /* its label overlay, where it has one */
+let tileErrors = 0, probeSeq = 0;
+let toastEl = null, toastTimer = null;
+
+function mapOK() { return map !== null; }
+
+function initMap() {
+  if (typeof L === 'undefined') {
+    byId('map-fallback').classList.remove('hidden');
+    byId('map-fallback-msg').innerHTML =
+      '<b>Leaflet could not load.</b><br>The map library comes from a CDN, so this page needs network access the ' +
+      'first time. Everything else still works: add places by typing coordinates, and all distances, times and ' +
+      'schedules are computed locally.';
+    return;
+  }
+  const city = CITIES[S.activeCity];
+  map = L.map('map', { center: city.center, zoom: city.zoom, zoomControl: true, worldCopyJump: true });
+
+  applyTiles(S.tiles);
+
+  pinLayer = L.layerGroup().addTo(map);
+  routeLayer = L.layerGroup().addTo(map);
+  navLayer = L.layerGroup().addTo(map);
+  map.on('click', onMapClick);
+}
+
+function providerBy(key) {
+  for (let i = 0; i < TILE_PROVIDERS.length; i++) if (TILE_PROVIDERS[i].key === key) return TILE_PROVIDERS[i];
+  return TILE_PROVIDERS[0];
+}
+
+/* Build (or rebuild) the basemap layer. The invert filter is a property of
+   the provider, not a blanket rule — it turns a light street map into one
+   that matches this UI, and must not be applied to a dark or aerial style. */
+function applyTiles(key) {
+  if (!mapOK()) return;
+  const p = providerBy(key);
+  if (tileLayer) { map.removeLayer(tileLayer); tileLayer = null; }
+  if (refLayer) { map.removeLayer(refLayer); refLayer = null; }
+  tileErrors = 0;
+
+  /* maxZoom past maxNativeZoom makes Leaflet upscale the deepest real
+     tile rather than request one the host does not have. */
+  const opts = { maxZoom: 19, maxNativeZoom: p.maxNative || 19, attribution: p.attr, crossOrigin: true };
+  if (p.subdomains) opts.subdomains = p.subdomains;
+  tileLayer = L.tileLayer(p.url, opts);
+
+  tileLayer.on('tileerror', function () {
+    tileErrors++;
+    /* A couple of failures is normal at the edge of a pan; a wall of them
+       means the host is unreachable. NOTE: this cannot catch a host that
+       refuses politely — OpenStreetMap serves its "Access blocked" notice
+       as a valid 200 PNG, which Leaflet counts as a successful tile. That
+       case is what probeTiles() below exists for. */
+    if (tileErrors === 8) showMapNotice(
+      '<b>Map tiles are not loading.</b><br>' + esc(p.label) + ' is unreachable — offline, or blocked by a firewall. ' +
+      'Place coordinates, distances, travel times and the schedule all still work.');
+  });
+
+  byId('map').style.setProperty('--tile-filter', p.filter || 'none');
+  tileLayer.addTo(map);
+  /* Canvas styles keep their labels in a separate transparent layer. It
+     stays in the tile pane with an explicit z-index — putting it in the
+     overlay pane would stack it against the route line and the markers. */
+  tileLayer.setZIndex(1);
+  if (p.ref) {
+    refLayer = L.tileLayer(p.ref, { maxZoom: 19, maxNativeZoom: p.maxNative || 19, crossOrigin: true, zIndex: 2 });
+    refLayer.addTo(map);
+  }
+  probeTiles(p);
+}
+
+function showMapNotice(html) {
+  byId('map-fallback').classList.remove('hidden');
+  byId('map-fallback-msg').innerHTML = html +
+    '<br><br><button class="btn btn-sm" data-act="map-retry">Dismiss</button>';
+}
+
+/* Hide AND clear. Leaving the old text in place would let a dismissed
+   notice flash again behind the next one. */
+function hideMapNotice() {
+  byId('map-fallback').classList.add('hidden');
+  byId('map-fallback-msg').innerHTML = '';
+  tileErrors = 0;
+  probeSeq++;                         /* drop any probe still in flight */
+}
+
+/* Detect a host that answers 200 with a constant placeholder — OSM's
+   "Access blocked" notice, or CARTO's "API key required" card. Such a
+   response is a perfectly valid image, so no error event ever fires and
+   the map just fills with the same picture over and over.
+
+   The giveaway is exactly that: it is the SAME picture everywhere. Fetch
+   one tile over Paris and one over Barcelona; two genuine map tiles of
+   different cities are never byte-identical, a placeholder always is.
+   Any network or CORS failure here is ignored — this may only warn on
+   positive evidence, never on its own inability to check. */
+function probeTiles(p) {
+  if (typeof fetch !== 'function' || !p.probe) return;
+  const seq = ++probeSeq;
+  const urls = [
+    tileUrl(p, 12, 2074, 1410),   /* central Paris     */
+    tileUrl(p, 12, 2072, 1529)    /* central Barcelona */
+  ];
+  Promise.all(urls.map(function (u) {
+    return fetch(u, { cache: 'no-store' }).then(function (r) { return r.ok ? r.blob() : null; });
+  })).then(function (b) {
+    if (seq !== probeSeq || !b[0] || !b[1]) return;
+    if (b[0].size !== b[1].size) return;                   /* different images: healthy */
+    /* Equal length alone could be coincidence, and crying wolf about a
+       working basemap is worse than missing one. Confirm byte equality. */
+    if (typeof b[0].arrayBuffer !== 'function') return;
+    return Promise.all([b[0].arrayBuffer(), b[1].arrayBuffer()]).then(function (ab) {
+      if (seq !== probeSeq) return;
+      const x = new Uint8Array(ab[0]), y = new Uint8Array(ab[1]);
+      if (x.length !== y.length) return;
+      for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return;
+      showMapNotice('<b>' + esc(p.label) + ' is refusing to serve tiles.</b><br>' +
+        'It returned the byte-identical image for two different cities — that is how a host ' +
+        'says "Access blocked" or "API key required" without returning an error. Pick another ' +
+        '<b>Basemap</b> below the map. Everything else on this page is unaffected.');
+    });
+  }).catch(function () { /* offline or CORS-blocked: not evidence of anything */ });
+}
+
+function tileUrl(p, z, x, y) {
+  return p.url.replace('{s}', (p.subdomains || 'a')[0]).replace('{z}', z)
+              .replace('{x}', x).replace('{y}', y).replace('{r}', '');
+}
+
+function onMapClick(e) {
+  if (!byId('btn-drop').classList.contains('on')) return;
+  const lat = e.latlng.lat, lng = e.latlng.lng;
+  byId('pf-lat').value = lat.toFixed(5);
+  byId('pf-lng').value = lng.toFixed(5);
+  setDraft([lat, lng]);
+  showPanel('pins');
+  byId('pf-coord-hint').innerHTML = 'Picked <b>' + lat.toFixed(5) + ', ' + lng.toFixed(5) +
+    '</b> — name it and save. Click the map again to move the pin.';
+  if (!byId('pf-name').value) byId('pf-name').focus();
+}
+
+function setDraft(latlng) {
+  draftLatLng = latlng;
+  if (!mapOK()) return;
+  if (draftMarker) { map.removeLayer(draftMarker); draftMarker = null; }
+  if (!latlng) return;
+  draftMarker = L.marker(latlng, {
+    icon: L.divIcon({ className: 'pin-draft', html: '<div class="pin-draft-dot"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }),
+    zIndexOffset: 1000, interactive: false
+  }).addTo(map);
+}
+
+function markerIcon(pin, num, isBase) {
+  const cat = CATS[pin.cat] || CATS.other;
+  const cls = 'pin-dot' + (num ? ' numbered' : '') + (isBase ? ' is-base' : '');
+  const inner = num ? String(num) : cat.icon;
+  const color = num ? '#3b82f6' : cat.color;
+  return L.divIcon({
+    className: 'pin-wrap',
+    html: '<div class="' + cls + '" style="--c:' + color + '"><span>' + inner + '</span></div>',
+    iconSize: [28, 28], iconAnchor: num ? [14, 14] : [14, 26], popupAnchor: [0, num ? -16 : -26]
+  });
+}
+
+function popupHtml(pin) {
+  const cat = CATS[pin.cat] || CATS.other;
+  const base = S.cities[S.activeCity].baseId === pin.id;
+  let h = '<div class="pop-title">' + cat.icon + ' ' + esc(pin.name) + '</div>';
+  h += '<div class="pop-sub">' + esc(cat.label) + (base ? ' · base' : '') + '</div>';
+  if (pin.addr) h += '<div class="pop-body">' + esc(pin.addr) + '</div>';
+  if (pin.notes) h += '<div class="pop-body">' + esc(pin.notes) + '</div>';
+  h += '<div class="pop-body mono" style="color:var(--text-3)">' + pin.lat.toFixed(5) + ', ' + pin.lng.toFixed(5) + '</div>';
+  h += '<div class="pop-acts">' +
+         '<button class="btn btn-sm" data-act="pin-from" data-id="' + pin.id + '">Travel from</button>' +
+         '<button class="btn btn-sm" data-act="pin-to" data-id="' + pin.id + '">Travel to</button>' +
+         '<button class="btn btn-sm" data-act="pin-day" data-id="' + pin.id + '">+ Schedule</button>' +
+         '<button class="btn btn-sm" data-act="pin-base" data-id="' + pin.id + '">' + (base ? 'Unset base' : 'Set base') + '</button>' +
+         '<button class="btn btn-sm" data-act="pin-edit" data-id="' + pin.id + '">Edit</button>' +
+       '</div>';
+  return h;
+}
+
+/* Which pins of the active city belong to the focused day, and in what
+   order — used for numbered markers and the route line. */
+function focusOrder() {
+  const day = focusedDay();
+  if (!day || day.city !== S.activeCity) return {};
+  const out = {};
+  let n = 0;
+  day.items.forEach(function (it) {
+    n++;
+    if (it.pinId && out[it.pinId] === undefined) out[it.pinId] = n;
+  });
+  return out;
+}
+
+function drawMap() {
+  if (!mapOK()) return;
+  pinLayer.clearLayers();
+  routeLayer.clearLayers();
+  markerIndex = {};
+
+  const city = S.cities[S.activeCity];
+  const order = focusOrder();
+  const hidden = S.catFilter;
+
+  city.pins.forEach(function (pin) {
+    if (hidden.indexOf(pin.cat) >= 0 && !order[pin.id]) return;
+    const mk = L.marker([pin.lat, pin.lng], {
+      icon: markerIcon(pin, order[pin.id] || 0, city.baseId === pin.id),
+      title: pin.name
+    }).bindPopup(popupHtml(pin));
+    mk.addTo(pinLayer);
+    markerIndex[pin.id] = mk;
+  });
+
+  /* The focused day's route, drawn from the real path of each leg. A
+     straight line between two stops was only ever decoration — nobody
+     travels it — so a leg that has not been routed yet draws nothing
+     rather than inventing a shape. */
+  const day = focusedDay();
+  if (day && day.city === S.activeCity) {
+    const comp = dayComputed(day);
+    comp.rows.forEach(function (r, i) {
+      if (i === 0) return;
+      const rt = legRoutes[legKey(day, r.it, r.depart)];
+      if (!rt || rt.failed || !rt.legs) return;
+      rt.legs.forEach(function (lg) {
+        if (!lg.coords || lg.coords.length < 2) return;
+        const base = LEG_STYLE[lg.kind] || LEG_STYLE.transit;
+        /* Thinner and dimmer than a leg you have clicked, so the one you
+           asked for still reads as the foreground. */
+        L.polyline(lg.coords, {
+          color: lg.color || base.color, weight: 3, opacity: .7,
+          dashArray: base.dashArray, lineJoin: 'round', smoothFactor: 0.6
+        }).addTo(routeLayer);
+      });
+    });
+  }
+
+  if (draftLatLng) setDraft(draftLatLng);
+}
+
+function fitCity() {
+  if (!mapOK()) return;
+  const pins = S.cities[S.activeCity].pins.filter(function (p) { return S.catFilter.indexOf(p.cat) < 0; });
+  if (!pins.length) { map.setView(CITIES[S.activeCity].center, CITIES[S.activeCity].zoom); return; }
+  const b = L.latLngBounds(pins.map(function (p) { return [p.lat, p.lng]; }));
+  map.fitBounds(b, { padding: [40, 40], maxZoom: 16 });
+}
+
+function focusPin(id) {
+  if (!mapOK()) { toast('Map unavailable — coordinates are in the list.'); return; }
+  const pin = pinById(S.activeCity, id);
+  if (!pin) return;
+  map.setView([pin.lat, pin.lng], Math.max(map.getZoom(), 15), { animate: true });
+  const mk = markerIndex[id];
+  if (mk) mk.openPopup();
+}
+
+/* ─── Geocoding search (Nominatim; needs network, fails soft) ───── */
+let searchTimer = null, searchSeq = 0;
+
+/* One geocoder behind two front doors: the box above the map, and the
+   address field in the Add-a-place form. The city is appended to the
+   query so "9 Rue de Rivoli" finds the one in the city you are planning. */
+function geocode(q) {
+  const city = CITIES[S.activeCity];
+  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=6&accept-language=en&q=' +
+              encodeURIComponent(q + ', ' + city.name + ', ' + city.country);
+  return fetchJSON(url, 15000);
+}
+
+function geoResultsHtml(list) {
+  if (!list.length) return '<div class="search-item">No match. Try a fuller address, or click the map.</div>';
+  return list.map(function (r) {
+    const parts = String(r.display_name || '').split(',');
+    return '<div class="search-item" data-act="search-pick" data-lat="' + parseFloat(r.lat) +
+           '" data-lng="' + parseFloat(r.lon) +
+           '" data-name="' + esc(parts[0].trim()) + '" data-full="' + esc(r.display_name) + '">' +
+           '<div>' + esc(parts[0].trim()) + '</div>' +
+           '<div class="si-sub">' + esc(parts.slice(1, 4).join(',').trim()) + '</div></div>';
+  }).join('');
+}
+
+function runGeocode(inputId, boxId) {
+  const q = byId(inputId).value.trim();
+  const box = byId(boxId);
+  if (q.length < 3) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  const seq = ++searchSeq;
+  box.classList.remove('hidden');
+  box.innerHTML = '<div class="search-item">Searching…</div>';
+  geocode(q).then(function (list) {
+    if (seq !== searchSeq) return;                 /* a newer query won */
+    box.innerHTML = geoResultsHtml(list);
+  }, function () {
+    if (seq !== searchSeq) return;
+    box.innerHTML = '<div class="search-item">Address lookup needs the web. Click the map to place this pin by hand.</div>';
+  });
+}
+
+function runSearch() { runGeocode('map-search', 'search-results'); }
+
+/* ─── 6a. PLACES PANEL ──────────────────────────────────────────── */
+
+function pinById(cityKey, id) {
+  const list = S.cities[cityKey].pins;
+  for (let i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+  return null;
+}
+function basePin(cityKey) {
+  const c = S.cities[cityKey || S.activeCity];
+  return c.baseId ? pinById(cityKey || S.activeCity, c.baseId) : null;
+}
+/* Origin for the "everything from base" table: the flagged place if there
+   is one, otherwise the city centre, so the table is never empty. */
+function baseOrCentre(cityKey) {
+  const key = cityKey || S.activeCity;
+  const p = basePin(key);
+  if (p) return { latlng: [p.lat, p.lng], label: p.name, id: p.id };
+  return { latlng: CITIES[key].center.slice(), label: CITIES[key].name + ' centre', id: null };
+}
+
+function renderCatSelect() {
+  byId('pf-cat').innerHTML = CAT_ORDER.map(function (c) {
+    return '<option value="' + c + '">' + CATS[c].icon + '  ' + esc(CATS[c].label) + '</option>';
+  }).join('');
+}
+
+function renderCatChips() {
+  const counts = {};
+  S.cities[S.activeCity].pins.forEach(function (p) { counts[p.cat] = (counts[p.cat] || 0) + 1; });
+  byId('cat-chips').innerHTML = CAT_ORDER.map(function (c) {
+    const on = S.catFilter.indexOf(c) < 0;
+    return '<button class="chip' + (on ? ' on' : '') + '" style="--cat:' + CATS[c].color + '" data-act="cat-toggle" data-cat="' + c + '">' +
+           '<span class="dot" style="--cat:' + CATS[c].color + '"></span>' + CATS[c].icon + ' ' + esc(CATS[c].label) +
+           ' <span style="opacity:.7">' + (counts[c] || 0) + '</span></button>';
+  }).join('');
+
+  byId('map-legend').innerHTML =
+    '<span class="card-note">Legend</span>' +
+    CAT_ORDER.filter(function (c) { return counts[c]; }).map(function (c) {
+      return '<span class="chip chip-static"><span class="dot" style="--cat:' + CATS[c].color + '"></span>' +
+             esc(CATS[c].label) + '</span>';
+    }).join('') +
+    '<span class="card-note">' + (focusedDay() ? 'Numbered pins = focused day, in order' : 'Focus a day to number its stops') + '</span>' +
+    '<span class="spacer"></span>' +
+    '<span class="card-note">Basemap</span>' +
+    '<select class="inp" style="width:auto;padding:4px 24px 4px 8px;font-size:.72rem" data-act="set-tiles" ' +
+      'title="Switch if the map shows an “Access blocked” or “API key required” tile">' +
+      TILE_PROVIDERS.map(function (t) {
+        return '<option value="' + t.key + '"' + (S.tiles === t.key ? ' selected' : '') + '>' + esc(t.label) + '</option>';
+      }).join('') +
+    '</select>';
+}
+
+function renderPins() {
+  const city = S.cities[S.activeCity];
+  const q = byId('pin-filter').value.trim().toLowerCase();
+  const origin = baseOrCentre();
+
+  byId('pins-city-name').textContent = CITIES[S.activeCity].name;
+  byId('nt-city-name').textContent = CITIES[S.activeCity].name;
+  byId('map-city-title').textContent = CITIES[S.activeCity].name + ' · ' + CITIES[S.activeCity].country;
+  byId('tv-settings-city').textContent = CITIES[S.activeCity].name;
+
+  const shown = city.pins.filter(function (p) {
+    if (S.catFilter.indexOf(p.cat) >= 0) return false;
+    if (!q) return true;
+    return (p.name + ' ' + p.addr + ' ' + p.notes).toLowerCase().indexOf(q) >= 0;
+  });
+  byId('pins-count').textContent = shown.length + ' of ' + city.pins.length + ' shown';
+  byId('badge-pins').textContent = city.pins.length;
+
+  const host = byId('pin-list');
+  if (!shown.length) {
+    host.innerHTML = '<div class="empty"><span class="big">📍</span>' +
+      (city.pins.length ? 'Nothing matches that filter.' :
+        'No places yet in ' + esc(CITIES[S.activeCity].name) + '.<br>Click the map, or search an address, then save it above.') +
+      '</div>';
+    return;
+  }
+
+  let html = '';
+  CAT_ORDER.forEach(function (cat) {
+    const group = shown.filter(function (p) { return p.cat === cat; });
+    if (!group.length) return;
+    group.sort(function (a, b) { return a.name.localeCompare(b.name); });
+    html += '<div class="cat-group"><div class="cat-group-head">' +
+            '<span class="dot" style="--cat:' + CATS[cat].color + '"></span>' + CATS[cat].icon + ' ' + esc(CATS[cat].label) +
+            '<span class="n">' + group.length + '</span></div>';
+    group.forEach(function (p) {
+      const isBase = city.baseId === p.id;
+      /* Quote the distance you would actually walk, not the crow-flies
+         one — the time beside it is computed on the walked distance. */
+      const walk = legFor(origin.latlng, [p.lat, p.lng], 'walk');
+      const meta = [];
+      if (p.addr) meta.push(esc(p.addr));
+      meta.push(isBase ? 'your base'
+        : fmtKm(walk.routeKm) + ' from ' + esc(origin.label) + ' · ' + fmtMin(walk.min) + ' walk');
+      html += '<div class="pin-row' + (isBase ? ' is-base' : '') + '" style="--cat:' + CATS[cat].color + '">' +
+                '<span class="pin-ico">' + CATS[cat].icon + '</span>' +
+                '<div class="pin-main">' +
+                  '<div class="pin-name">' + esc(p.name) + (isBase ? '<span class="base-tag">BASE</span>' : '') + '</div>' +
+                  '<div class="pin-meta">' + meta.join(' · ') + '</div>' +
+                  (p.notes ? '<div class="pin-note">' + esc(p.notes) + '</div>' : '') +
+                '</div>' +
+                '<div class="pin-acts">' +
+                  '<button class="btn btn-icon" data-act="pin-focus" data-id="' + p.id + '" title="Show on map">🔎</button>' +
+                  '<button class="btn btn-icon' + (isBase ? ' on' : '') + '" data-act="pin-base" data-id="' + p.id + '" title="Use as base / hotel">🏠</button>' +
+                  '<button class="btn btn-icon" data-act="pin-day" data-id="' + p.id + '" title="Add to the focused day">🗓</button>' +
+                  '<button class="btn btn-icon" data-act="pin-edit" data-id="' + p.id + '" title="Edit">✏️</button>' +
+                  '<button class="btn btn-icon btn-danger" data-act="pin-del" data-id="' + p.id + '" title="Delete">🗑</button>' +
+                '</div>' +
+              '</div>';
+    });
+    html += '</div>';
+  });
+  host.innerHTML = html;
+}
+
+function pinFormFill(pin) {
+  byId('pf-name').value = pin ? pin.name : '';
+  byId('pf-cat').value = pin ? pin.cat : 'sight';
+  byId('pf-lat').value = pin ? pin.lat : '';
+  byId('pf-lng').value = pin ? pin.lng : '';
+  byId('pf-addr').value = pin ? pin.addr : '';
+  byId('pf-notes').value = pin ? pin.notes : '';
+  editingPinId = pin ? pin.id : null;
+  byId('pinform-title').textContent = pin ? 'Edit place' : 'Add a place';
+  byId('btn-pin-save').textContent = pin ? 'Update place' : 'Save place';
+  byId('btn-pin-cancel').hidden = !pin;
+  byId('pf-geo').value = '';
+  byId('pf-geo-results').classList.add('hidden');
+  byId('pf-geo-results').innerHTML = '';
+  byId('pf-geo-status').textContent = '';
+  setDraft(pin ? [pin.lat, pin.lng] : null);
+  if (!pin) byId('pf-coord-hint').textContent = 'Type an address above, click the map, or enter coordinates.';
+}
+
+function savePinFromForm() {
+  const name = byId('pf-name').value.trim();
+  const lat = parseFloat(byId('pf-lat').value), lng = parseFloat(byId('pf-lng').value);
+  const st = byId('pin-status');
+  st.classList.remove('err');
+  if (!name) { st.textContent = 'Give the place a name.'; st.classList.add('err'); byId('pf-name').focus(); return; }
+  if (!isFinite(lat) || !isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    st.textContent = 'Coordinates are missing or out of range — click the map to pick a point.';
+    st.classList.add('err'); return;
+  }
+  const city = S.cities[S.activeCity];
+  const data = { name: name, cat: byId('pf-cat').value, lat: lat, lng: lng,
+                 addr: byId('pf-addr').value.trim(), notes: byId('pf-notes').value };
+  if (editingPinId) {
+    const p = pinById(S.activeCity, editingPinId);
+    if (p) Object.keys(data).forEach(function (k) { p[k] = data[k]; });
+    st.textContent = 'Updated “' + name + '”.';
+  } else {
+    data.id = uid();
+    city.pins.push(data);
+    st.textContent = 'Added “' + name + '” to ' + CITIES[S.activeCity].name + '.';
+  }
+  pinFormFill(null);
+  save();
+  renderAll();
+}
+
+function deletePin(id) {
+  const city = S.cities[S.activeCity];
+  const p = pinById(S.activeCity, id);
+  if (!p) return;
+  const usedBy = [];
+  S.days.forEach(function (d) {
+    if (d.city !== S.activeCity) return;
+    d.items.forEach(function (it) { if (it.pinId === id) usedBy.push(fmtDate(d.date)); });
+  });
+  let msg = 'Delete “' + p.name + '”?';
+  if (usedBy.length) msg += '\n\nIt is scheduled on ' + usedBy.join(', ') +
+    '. Those stops will keep the name as plain text and lose their coordinates.';
+  if (!window.confirm(msg)) return;
+
+  /* Keep the itinerary readable: detach rather than silently blank the stop. */
+  S.days.forEach(function (d) {
+    if (d.city !== S.activeCity) return;
+    d.items.forEach(function (it) { if (it.pinId === id) { it.pinId = null; it.place = p.name; } });
+  });
+  city.pins = city.pins.filter(function (x) { return x.id !== id; });
+  if (city.baseId === id) city.baseId = null;
+  if (editingPinId === id) pinFormFill(null);
+  save();
+  renderAll();
+  toast('Deleted “' + p.name + '”.');
+}
+
+/* ─── 6b. TRAVEL PANEL ──────────────────────────────────────────── */
+
+let tvFrom = '__base', tvTo = '', tvMatrixMode = 'walk';
+
+/* A select value resolves to a point: '__base', '__centre' or a pin id. */
+function resolvePoint(val, cityKey) {
+  const key = cityKey || S.activeCity;
+  if (val === '__centre') return { latlng: CITIES[key].center.slice(), label: CITIES[key].name + ' centre' };
+  if (val === '__base') return baseOrCentre(key);
+  const p = pinById(key, val);
+  return p ? { latlng: [p.lat, p.lng], label: p.name, id: p.id } : null;
+}
+
+function pointOptions(sel) {
+  const city = S.cities[S.activeCity];
+  let h = '<option value="__base"' + (sel === '__base' ? ' selected' : '') + '>🏠 Base — ' + esc(baseOrCentre().label) + '</option>' +
+          '<option value="__centre"' + (sel === '__centre' ? ' selected' : '') + '>◎ ' + esc(CITIES[S.activeCity].name) + ' centre</option>';
+  CAT_ORDER.forEach(function (cat) {
+    const group = city.pins.filter(function (p) { return p.cat === cat; });
+    if (!group.length) return;
+    group.sort(function (a, b) { return a.name.localeCompare(b.name); });
+    h += '<optgroup label="' + CATS[cat].icon + ' ' + esc(CATS[cat].label) + '">' +
+         group.map(function (p) {
+           return '<option value="' + p.id + '"' + (sel === p.id ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+         }).join('') + '</optgroup>';
+  });
+  return h;
+}
+
+function renderTravel() {
+  const cur = CITIES[S.activeCity].currency;
+  const pins = S.cities[S.activeCity].pins;
+
+  /* Keep the selects pointing at something real after an edit or city switch. */
+  if (tvTo && tvTo !== '__base' && tvTo !== '__centre' && !pinById(S.activeCity, tvTo)) tvTo = '';
+  if (tvFrom !== '__base' && tvFrom !== '__centre' && !pinById(S.activeCity, tvFrom)) tvFrom = '__base';
+  if (!tvTo) {
+    const first = pins.filter(function (p) { return p.id !== S.cities[S.activeCity].baseId; })[0];
+    tvTo = first ? first.id : '__centre';
+  }
+  byId('tv-from').innerHTML = pointOptions(tvFrom);
+  byId('tv-to').innerHTML = pointOptions(tvTo);
+
+  byId('tv-matrix-mode').innerHTML = MODE_ORDER.map(function (m) {
+    return '<option value="' + m + '"' + (tvMatrixMode === m ? ' selected' : '') + '>' +
+           MODE_ICON[m] + ' ' + esc(modeLabel(m)) + '</option>';
+  }).join('');
+
+  const a = resolvePoint(tvFrom), b = resolvePoint(tvTo);
+  const statsEl = byId('tv-stats'), tblEl = byId('tv-table'), noteEl = byId('tv-note');
+
+  if (!a || !b) {
+    statsEl.innerHTML = '';
+    tblEl.innerHTML = '';
+    noteEl.textContent = 'Pick two places.';
+  } else {
+    const legs = allLegs(a.latlng, b.latlng);
+    const straight = haversine(a.latlng, b.latlng);
+    let fastest = null, cheapest = null;
+    MODE_ORDER.forEach(function (m) {
+      if (legs[m].zero) return;
+      if (!fastest || legs[m].min < legs[fastest].min) fastest = m;
+      if (!cheapest || legs[m].fare < legs[cheapest].fare) cheapest = m;
+    });
+
+    /* The distance shown is the one you would actually cover by the
+       quickest mode — never the crow-flies figure, which nobody travels. */
+    const quickest = fastest || 'walk';
+    const routedQuick = (navRoute && navRoute.mode === quickest &&
+                         navRoute.key === navKey(quickest, a.latlng, b.latlng, whenISO())) ? navRoute : null;
+    const dist = splitUnit(fmtKm(routedQuick ? routedQuick.km : legs[quickest].routeKm));
+    const ft = splitUnit(fastest ? fmtMin(legs[fastest].min) : '0 min');
+    const wk = splitUnit(fmtMin(legs.walk.min));
+    statsEl.innerHTML =
+      stat(dist.v, dist.u, 'Distance') +
+      stat(ft.v, ft.u, 'Fastest') +
+      stat(fastest ? MODE_ICON[fastest] : '—', '', fastest ? modeLabel(fastest) : 'same place') +
+      stat(wk.v, wk.u, 'On foot');
+
+    tblEl.innerHTML =
+      '<thead><tr><th>Mode</th><th class="num">Route</th><th class="num">Time</th><th class="num">Fare</th></tr></thead><tbody>' +
+      MODE_ORDER.map(function (m) {
+        const l = legs[m];
+        /* A routed answer replaces the estimate for its own row only, and
+           only while it still describes this origin, destination and time. */
+        const routed = (navRoute && navRoute.mode === m &&
+                        navRoute.key === navKey(m, a.latlng, b.latlng, whenISO())) ? navRoute : null;
+        const busy = navBusy === m;
+        const tags = routed ? '<span class="tag-best tag-live">ROUTED</span>'
+          : ((m === fastest ? '<span class="tag-best tag-fast">FASTEST</span>' : '') +
+             (m === cheapest && cheapest !== fastest ? '<span class="tag-best tag-cheap">CHEAPEST</span>' : ''));
+        const cls = routed ? ' class="routed clickable"'
+                  : (busy ? ' class="routing clickable"'
+                  : (m === fastest ? ' class="best clickable"' : ' class="clickable"'));
+        return '<tr' + cls + ' data-act="route-mode" data-mode="' + m + '" title="Show the real route on the map">' +
+               '<td><div class="mode-cell">' + MODE_ICON[m] + ' <span>' + esc(modeLabel(m)) + '</span></div></td>' +
+               '<td class="num">' + (routed ? fmtKm(routed.km) : fmtKm(l.routeKm)) + '</td>' +
+               '<td class="num">' + (busy ? 'routing…' : fmtMin(routed ? routed.min : l.min)) + tags + '</td>' +
+               '<td class="num">' + fmtMoney(l.fare, cur) + '</td></tr>';
+      }).join('') + '</tbody>';
+
+    noteEl.innerHTML = '<b>' + esc(a.label) + ' → ' + esc(b.label) + '.</b> ' +
+      'Click a row to draw the real route on the map: walking, cycling and taxi follow the street ' +
+      'network, bus and train come back as a timetabled journey with real lines. Until then the ' +
+      'figures are estimates.';
+  }
+
+  /* Everything from base, one mode, nearest first. */
+  const origin = baseOrCentre();
+  byId('tv-base-name').textContent = origin.label;
+  const rows = pins.filter(function (p) { return p.id !== origin.id; })
+    .map(function (p) {
+      const l = legFor(origin.latlng, [p.lat, p.lng], tvMatrixMode);
+      return { p: p, l: l, d: l.routeKm };
+    })
+    .sort(function (x, y) { return x.d - y.d; });
+
+  byId('tv-matrix').innerHTML = !rows.length
+    ? '<tbody><tr><td class="empty">Add places to compare them.</td></tr></tbody>'
+    : '<thead><tr><th>Place</th><th class="num">Route</th><th class="num">' + MODE_ICON[tvMatrixMode] + ' Time</th><th class="num">Fare</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        return '<tr class="clickable" data-act="pin-focus" data-id="' + r.p.id + '">' +
+               '<td><div class="mode-cell" style="font-weight:500">' + (CATS[r.p.cat] || CATS.other).icon +
+               ' <span>' + esc(r.p.name) + '</span></div></td>' +
+               '<td class="num">' + fmtKm(r.l.routeKm) + '</td>' +
+               '<td class="num">' + fmtMin(r.l.min) + '</td>' +
+               '<td class="num">' + fmtMoney(r.l.fare, cur) + '</td></tr>';
+      }).join('') + '</tbody>';
+
+  renderRoutePanel();
+  renderSettings();
+}
+
+/* Split a formatted quantity at the LAST space, so a stat card's unit
+   always belongs to the number printed beside it: "1 h 6" + "min", never
+   "1" + "min", which is a card describing a number it is not holding. */
+function splitUnit(s) {
+  const i = String(s).lastIndexOf(' ');
+  return i < 0 ? { v: String(s), u: '' } : { v: s.slice(0, i), u: s.slice(i + 1) };
+}
+
+function stat(val, unit, label) {
+  return '<div class="stat"><div class="stat-val">' + esc(val) +
+         (unit ? '<span class="stat-unit">' + esc(unit) + '</span>' : '') + '</div>' +
+         '<div class="stat-label">' + esc(label) + '</div></div>';
+}
+
+function renderSettings() {
+  const st = settingsFor();
+  const cur = CITIES[S.activeCity].currency;
+  let h = '<div></div>' +
+          '<div class="sg-head">Speed<br>km/h</div><div class="sg-head">Detour<br>×</div>' +
+          '<div class="sg-head">Wait<br>min</div><div class="sg-head">Base<br>' + cur + '</div>' +
+          '<div class="sg-head">Per km<br>' + cur + '</div>';
+  MODE_ORDER.forEach(function (m) {
+    h += '<div class="sg-mode">' + MODE_ICON[m] + ' <span>' + esc(modeLabel(m)) + '</span></div>';
+    [['speed', .5], ['detour', .01], ['wait', 1], ['base', .05], ['perKm', .05]].forEach(function (f) {
+      h += '<input type="number" min="0" step="' + f[1] + '" value="' + st[m][f[0]] +
+           '" data-act="set-mode" data-mode="' + m + '" data-field="' + f[0] + '">';
+    });
+  });
+  byId('tv-settings').innerHTML = h;
+}
+
+
+/* ─── 6b2. REAL ROUTING ─────────────────────────────────────────── */
+
+/* The estimator above always answers: instantly, offline, for any two
+   points. These services answer with the actual path instead — FOSSGIS's
+   OSRM instances for foot/bike/car geometry, and Transitous (MOTIS) for
+   bus and rail itineraries with real lines, stops and timetables. Both
+   are free, keyless and CORS-open, and both need network, so every
+   failure falls back to the estimate rather than emptying the table.
+   A route is fetched only when you click a mode, never on render. */
+const OSRM_BASE = 'https://routing.openstreetmap.de/';
+const OSRM_PROFILE = { walk: 'routed-foot', bike: 'routed-bike', taxi: 'routed-car' };
+const TRANSIT_URL = 'https://api.transitous.org/api/v1/plan';
+/* Which vehicle types each row should ask for, so "Bus" and "Métro"
+   return genuinely different journeys rather than the same best one. */
+const TRANSIT_FILTER = { bus: 'BUS', rail: 'SUBWAY,TRAM,RAIL' };
+
+/* A journey you are making on foot is the subject of the map and gets a
+   bright dotted line; the short walk to a bus stop inside a transit
+   itinerary is connective tissue and stays quiet, so the ride reads as
+   the main event. Same geometry, different rank. */
+const LEG_STYLE = {
+  walk:    { color: '#22d3ee', weight: 5,   dashArray: '1 9' },
+  connect: { color: '#94a3b8', weight: 3.5, dashArray: '1 7' },
+  bike:    { color: '#34d399', weight: 5 },
+  taxi:    { color: '#f59e0b', weight: 5 },
+  transit: { color: '#3b82f6', weight: 6 }
+};
+
+let navRoute = null, navBusy = null, navSeq = 0;
+const navCache = {};
+
+function navKey(mode, a, b, when) {
+  return mode + '|' + a[0].toFixed(5) + ',' + a[1].toFixed(5) + '|' +
+         b[0].toFixed(5) + ',' + b[1].toFixed(5) + (TRANSIT_FILTER[mode] ? '|' + when : '');
+}
+
+/* The datetime the timetable lookup should use. */
+function whenISO() {
+  const el = byId('tv-when');
+  const d = (el && el.value) ? new Date(el.value) : new Date(Date.now() + 3600000);
+  return isFinite(d.getTime()) ? d.toISOString() : new Date().toISOString();
+}
+function hhmm(iso) {
+  const d = new Date(iso);
+  return isFinite(d.getTime())
+    ? String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : '';
+}
+
+/* Google encoded polyline. MOTIS states its own precision (7); OSRM is
+   asked for GeoJSON and needs no decoding at all. */
+function decodePolyline(str, precision) {
+  const factor = Math.pow(10, precision || 5);
+  const out = [];
+  let lat = 0, lng = 0, i = 0, b, shift, result;
+  while (i < str.length) {
+    shift = 0; result = 0;
+    do { b = str.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+    shift = 0; result = 0;
+    do { b = str.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+    out.push([lat / factor, lng / factor]);
+  }
+  return out;
+}
+
+function pathKm(coords) {
+  let t = 0;
+  for (let i = 1; i < coords.length; i++) t += haversine(coords[i - 1], coords[i]);
+  return t;
+}
+
+function fetchJSON(url, ms) {
+  const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+  const timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, ms || 15000);
+  return fetch(url, ctrl ? { signal: ctrl.signal } : {}).then(function (r) {
+    clearTimeout(timer);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }, function (e) { clearTimeout(timer); throw e; });
+}
+
+/* Walking, cycling and driving follow the street network. */
+function streetRoute(mode, a, b) {
+  const url = OSRM_BASE + OSRM_PROFILE[mode] + '/route/v1/driving/' +
+    a[1].toFixed(6) + ',' + a[0].toFixed(6) + ';' + b[1].toFixed(6) + ',' + b[0].toFixed(6) +
+    '?overview=full&geometries=geojson';
+  return fetchJSON(url).then(function (d) {
+    const r = d.routes && d.routes[0];
+    if (!r || !r.geometry || !r.geometry.coordinates.length) throw new Error('no route');
+    /* GeoJSON is lon,lat; Leaflet wants lat,lng. */
+    const coords = r.geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
+    return { kind: 'street', mode: mode, km: r.distance / 1000, min: r.duration / 60,
+             legs: [{ kind: mode, coords: coords, min: r.duration / 60 }] };
+  });
+}
+
+/* Bus and rail come back as a journey: walk, ride, maybe change, walk. */
+function transitRoute(mode, a, b, when) {
+  const url = TRANSIT_URL + '?fromPlace=' + a[0].toFixed(6) + ',' + a[1].toFixed(6) +
+    '&toPlace=' + b[0].toFixed(6) + ',' + b[1].toFixed(6) +
+    '&time=' + encodeURIComponent(when) + '&numItineraries=3' +
+    '&transitModes=' + TRANSIT_FILTER[mode];
+  return fetchJSON(url, 25000).then(function (d) {
+    const usable = (d.itineraries || []).filter(function (it) {
+      return (it.legs || []).some(function (l) { return l.mode !== 'WALK'; });
+    });
+    if (!usable.length) throw new Error('no itinerary');
+    const it = usable[0];
+    const legs = (it.legs || []).map(function (l) {
+      const g = l.legGeometry || {};
+      return {
+        kind: l.mode === 'WALK' ? 'connect' : 'transit',
+        vehicle: l.mode,
+        line: l.routeShortName || l.routeLongName || '',
+        color: /^[0-9a-fA-F]{6}$/.test(l.routeColor || '') ? '#' + l.routeColor : null,
+        agency: l.agencyName || '',
+        headsign: l.headsign || '',
+        fromName: (l.from && l.from.name) || '',
+        toName: (l.to && l.to.name) || '',
+        start: l.startTime, end: l.endTime,
+        min: (l.duration || 0) / 60,
+        coords: g.points ? decodePolyline(g.points, g.precision || 7) : []
+      };
+    });
+    let km = 0;
+    legs.forEach(function (l) { km += pathKm(l.coords); });
+    return { kind: 'transit', mode: mode, km: km, min: (it.duration || 0) / 60,
+             legs: legs, start: it.startTime, end: it.endTime, transfers: it.transfers || 0 };
+  });
+}
+
+function clearNav() {
+  navRoute = null; navBusy = null; navSeq++;
+  activeLegKey = null;
+  if (navLayer) navLayer.clearLayers();
+}
+
+function drawNavRoute(route) {
+  if (!mapOK() || !navLayer) return;
+  navLayer.clearLayers();
+  if (!route) return;
+  const all = [];
+  route.legs.forEach(function (leg) {
+    if (!leg.coords || leg.coords.length < 2) return;
+    const base = LEG_STYLE[leg.kind] || LEG_STYLE.transit;
+    /* A dark casing under the line keeps it readable over any basemap. */
+    L.polyline(leg.coords, { color: '#060b18', weight: base.weight + 5, opacity: .5, lineJoin: 'round' }).addTo(navLayer);
+    L.polyline(leg.coords, {
+      color: leg.color || base.color, weight: base.weight,
+      dashArray: base.dashArray, opacity: .97, lineJoin: 'round', lineCap: 'round',
+      /* Leaflet simplifies to the current zoom; ease off so the corners
+         and curves of the real street line stay visible. */
+      smoothFactor: 0.5
+    }).addTo(navLayer);
+    leg.coords.forEach(function (c) { all.push(c); });
+  });
+  if (all.length) map.fitBounds(L.latLngBounds(all), { padding: [45, 45], maxZoom: 16 });
+}
+
+function requestRoute(mode) {
+  const a = resolvePoint(tvFrom), b = resolvePoint(tvTo);
+  if (!a || !b) return;
+  if (haversine(a.latlng, b.latlng) < 0.03) { toast('Those are the same place.'); return; }
+  if (typeof fetch !== 'function') { toast('This browser cannot fetch routes.', true); return; }
+
+  const when = whenISO();
+  const key = navKey(mode, a.latlng, b.latlng, when);
+  if (navCache[key]) {                       /* already fetched: no second call */
+    navRoute = navCache[key]; navBusy = null;
+    renderTravel(); drawNavRoute(navRoute);
+    return;
+  }
+  navBusy = mode;
+  const seq = ++navSeq;
+  renderTravel();
+
+  const work = TRANSIT_FILTER[mode]
+    ? transitRoute(mode, a.latlng, b.latlng, when)
+    : streetRoute(mode, a.latlng, b.latlng);
+
+  work.then(function (route) {
+    if (seq !== navSeq) return;              /* a newer click won */
+    route.key = key;
+    route.fromLabel = a.label; route.toLabel = b.label;
+    navCache[key] = route;
+    navRoute = route; navBusy = null;
+    renderTravel(); drawNavRoute(route);
+  }, function (err) {
+    if (seq !== navSeq) return;
+    navBusy = null; navRoute = null;
+    renderTravel(); drawNavRoute(null);
+    const offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
+    toast(offline ? 'Offline — the estimate in the table still stands.'
+      : (TRANSIT_FILTER[mode]
+          ? 'No ' + modeLabel(mode) + ' journey found for that time. The estimate still stands.'
+          : 'Could not reach the routing service. The estimate still stands.'), true);
+  });
+}
+
+function renderRoutePanel() {
+  const host = byId('tv-route');
+  if (!host) return;
+  if (!navRoute) { host.innerHTML = ''; return; }
+  const r = navRoute;
+
+  let h = '<div class="route-card"><div class="route-head">' +
+    MODE_ICON[r.mode] + ' <span>' + esc(modeLabel(r.mode)) + '</span>' +
+    '<span class="tag-best tag-live">ACTUAL ROUTE</span>' +
+    '<span class="spacer"></span>' +
+    '<span class="mono">' + fmtMin(r.min) + ' · ' + fmtKm(r.km) + '</span>' +
+    '<button class="btn btn-sm" data-act="route-clear">Clear</button></div>';
+
+  if (r.kind === 'transit') {
+    h += '<div class="card-note">Depart ' + esc(hhmm(r.start)) + ' · arrive ' + esc(hhmm(r.end)) +
+         ' · ' + r.transfers + (r.transfers === 1 ? ' change' : ' changes') + '</div>';
+  }
+
+  h += '<div class="route-rail">' + r.legs.map(function (leg) {
+    if (leg.kind === 'transit') {
+      return '<div class="route-leg">' +
+        '<span class="line-chip" style="background:' + (leg.color || 'var(--blue)') + '">' +
+        esc(leg.line || leg.vehicle) + '</span><div>' +
+        '<b>' + esc(leg.fromName) + '</b> → <b>' + esc(leg.toName) + '</b>' +
+        (leg.headsign ? ' <span class="card-note">towards ' + esc(leg.headsign) + '</span>' : '') +
+        '<div class="card-note">' + esc(leg.agency) + (leg.agency ? ' · ' : '') +
+        fmtMin(leg.min) + ' · ' + esc(hhmm(leg.start)) + '–' + esc(hhmm(leg.end)) + '</div></div></div>';
+    }
+    const icon = r.kind === 'transit' ? '🚶' : MODE_ICON[r.mode];
+    const verb = r.kind === 'transit' ? 'Walk'
+      : ({ walk: 'Walk', bike: 'Cycle', taxi: 'Ride' }[r.mode] || 'Travel');
+    return '<div class="route-leg"><span class="leg-ico">' + icon + '</span><div>' +
+      verb + ' ' + fmtMin(leg.min) +
+      (leg.toName ? ' to <b>' + esc(leg.toName) + '</b>' : '') + '</div></div>';
+  }).join('') + '</div>';
+
+  h += '<div class="card-note">' + esc(r.fromLabel) + ' → ' + esc(r.toLabel) + '. ' +
+       (r.kind === 'transit'
+         ? 'Timetable and lines from Transitous; a real journey planner for the city is still the last word before you travel.' +
+           (r.shifted ? ' That date has passed, so this is the same weekday and time on the next equivalent service.' : '')
+         : 'Path and time from OpenStreetMap routing — the real street network, not a straight line.') +
+       '</div></div>';
+  host.innerHTML = h;
+}
+
+/* ─── 6c. SCHEDULE PANEL ────────────────────────────────────────── */
+
+function focusedDay() {
+  if (!S.focusDayId) return null;
+  for (let i = 0; i < S.days.length; i++) if (S.days[i].id === S.focusDayId) return S.days[i];
+  return null;
+}
+function dayById(id) {
+  for (let i = 0; i < S.days.length; i++) if (S.days[i].id === id) return S.days[i];
+  return null;
+}
+
+/* A stop's location: a linked place, or nothing if it is free text. */
+function itemPoint(day, it) {
+  if (!it.pinId) return null;
+  const p = pinById(day.city, it.pinId);
+  return p ? { latlng: [p.lat, p.lng], label: p.name, cat: p.cat, id: p.id } : null;
+}
+function itemLabel(day, it) {
+  const pt = itemPoint(day, it);
+  return pt ? pt.label : (it.place || 'Unnamed stop');
+}
+
+/* Walk the day once and derive everything the UI needs: the travel leg
+   into each stop, the earliest feasible arrival, and whether the time
+   written down is actually reachable. */
+function dayComputed(day) {
+  const rows = [];
+  let prevEnd = null, prevPoint = null;
+  let travelMin = 0, walkKm = 0, fare = 0, firstStart = null;
+
+  day.items.forEach(function (it, i) {
+    const pt = itemPoint(day, it);
+    let leg = null;
+    if (i > 0 && pt && prevPoint) leg = legFor(prevPoint.latlng, pt.latlng, it.mode, day.city);
+    const arrive = (prevEnd === null) ? null : prevEnd + (leg ? leg.min : 0);
+    const typed = hhmmToMin(it.time);
+    const start = (typed === null) ? arrive : typed;
+    /* Half-minute slack keeps rounding from inventing a conflict. */
+    const short = (typed !== null && arrive !== null && typed < arrive - 0.5) ? arrive - typed : 0;
+
+    if (leg) {
+      travelMin += leg.min;
+      fare += leg.fare;
+      if (it.mode === 'walk') walkKm += leg.routeKm;
+    }
+    if (firstStart === null && start !== null) firstStart = start;
+    rows.push({ it: it, pt: pt, leg: leg, arrive: arrive, start: start, short: short, n: i + 1,
+                depart: prevEnd });
+    prevEnd = (start === null) ? null : start + (parseFloat(it.dur) || 0);
+    if (pt) prevPoint = pt;
+  });
+
+  return { rows: rows, travelMin: travelMin, walkKm: walkKm, fare: fare,
+           start: firstStart, end: prevEnd, stops: day.items.length };
+}
+
+function renderSchedule() {
+  byId('badge-schedule').textContent = S.days.length + (S.days.length === 1 ? ' day' : ' days');
+  byId('sd-city').innerHTML = CITY_ORDER.map(function (k) {
+    return '<option value="' + k + '"' + (k === S.activeCity ? ' selected' : '') + '>' +
+           CITIES[k].flag + ' ' + esc(CITIES[k].name) + '</option>';
+  }).join('');
+
+  /* A day belongs to a city — that is what makes its stops offer that
+     city's places and its travel legs use that city's fares. So the list
+     follows the city picked at the top of the page, rather than mixing
+     every city together where switching cities would change nothing. */
+  const cityDays = S.days.filter(function (d) { return d.city === S.activeCity; });
+  const showAll = S.schedFilter === 'all';
+  const shown = showAll ? S.days : cityDays;
+  const elsewhere = S.days.length - cityDays.length;
+
+  byId('sched-scope').innerHTML =
+    '<button class="chip' + (showAll ? '' : ' on') + '" data-act="sched-scope" data-scope="city">' +
+      CITIES[S.activeCity].flag + ' ' + esc(CITIES[S.activeCity].name) +
+      ' <span style="opacity:.7">' + cityDays.length + '</span></button>' +
+    '<button class="chip' + (showAll ? ' on' : '') + '" data-act="sched-scope" data-scope="all">' +
+      '🌍 All cities <span style="opacity:.7">' + S.days.length + '</span></button>';
+  byId('sched-note').textContent = showAll
+    ? 'Every city. A day\u2019s stops come from its own city.'
+    : (elsewhere ? elsewhere + (elsewhere === 1 ? ' day' : ' days') + ' in other cities hidden' : '');
+
+  const host = byId('day-list');
+  if (!shown.length) {
+    host.innerHTML = '<div class="card"><div class="empty"><span class="big">🗓️</span>' +
+      (S.days.length
+        ? 'No days in ' + esc(CITIES[S.activeCity].name) + ' yet. Add one above — its stops will then ' +
+          'offer ' + esc(CITIES[S.activeCity].name) + ' places.<br><br>' +
+          '<button class="btn btn-sm" data-act="sched-scope" data-scope="all">' +
+          (S.days.length === 1 ? 'Show the one day you have' : 'Show all ' + S.days.length + ' days') +
+          '</button>'
+        : 'No days yet. Add one above, then drop your places into it — each stop shows the travel leg ' +
+          'from the one before it.') +
+      '</div></div>';
+    return;
+  }
+
+  host.innerHTML = shown.map(function (day) {
+    const c = dayComputed(day);
+    const cityName = CITIES[day.city].name;
+    const focused = S.focusDayId === day.id;
+    const cur = CITIES[day.city].currency;
+
+    let h = '<div class="day-card' + (focused ? ' focused' : '') + '">';
+
+    h += '<div class="day-head">' +
+           '<div>' +
+             '<input class="day-title-inp" type="date" data-act="day-date" data-id="' + day.id + '" value="' + esc(day.date) +
+               '" style="width:146px;font-size:.82rem;font-weight:700;color:var(--text-1)">' +
+             '<div class="day-dow">' + esc(weekday(day.date)) + ' · ' + esc(fmtDate(day.date)) + '</div>' +
+           '</div>' +
+           '<select class="day-title-inp" data-act="day-city" data-id="' + day.id + '" title="' + esc(cityName) +
+             '" style="width:auto;flex:none">' +
+             CITY_ORDER.map(function (k) {
+               return '<option value="' + k + '"' + (k === day.city ? ' selected' : '') + '>' +
+                      CITIES[k].flag + ' ' + esc(CITIES[k].name) + '</option>';
+             }).join('') +
+           '</select>' +
+           '<input class="day-title-inp" data-act="day-title" data-id="' + day.id + '" value="' + esc(day.title) + '" placeholder="Label this day…">' +
+           '<button class="btn btn-icon' + (focused ? ' on' : '') + '" data-act="day-focus" data-id="' + day.id + '" title="Show this day on the map">' + (focused ? '👁 On map' : '👁') + '</button>' +
+           '<button class="btn btn-icon btn-danger" data-act="day-del" data-id="' + day.id + '" title="Delete this day">🗑</button>' +
+         '</div>';
+
+    h += '<div class="day-body">';
+    if (!day.items.length) {
+      h += '<div class="empty" style="padding:var(--sp-md)">No stops yet.</div>';
+    }
+    c.rows.forEach(function (r, i) {
+      const it = r.it;
+      /* Travel leg into this stop — the mode select lives here, because
+         a mode describes how you GOT to the stop below it. */
+      if (i > 0) {
+        h += '<div class="leg-bar">' +
+               '<select data-act="item-mode" data-day="' + day.id + '" data-id="' + it.id + '">' +
+               MODE_ORDER.map(function (m) {
+                 return '<option value="' + m + '"' + (it.mode === m ? ' selected' : '') + '>' +
+                        MODE_ICON[m] + ' ' + esc(modeLabel(m, day.city)) + '</option>';
+               }).join('') + '</select>';
+        if (r.leg && !r.leg.zero) {
+          h += '<span class="leg-txt">' + fmtMin(r.leg.min) + ' · ' + fmtKm(r.leg.routeKm) +
+               (r.leg.fare > 0 ? ' · ' + fmtMoney(r.leg.fare, cur) : '') + '</span>';
+        } else if (r.leg && r.leg.zero) {
+          h += '<span class="leg-txt">same place</span>';
+        } else {
+          h += '<span class="leg-txt">no coordinates — link a place to get a time</span>';
+        }
+        if (r.arrive !== null) {
+          h += r.short > 0
+            ? '<span class="warn-chip">⚠ arrives ' + minToHHMM(r.arrive) + ', ' + Math.round(r.short) + ' min short</span>'
+            : '<span class="ok-chip">✓ fits</span>';
+        }
+        h += '</div>';
+      }
+
+      const cat = r.pt ? (CATS[r.pt.cat] || CATS.other) : CATS.other;
+      h += '<div class="item" style="--cat:' + cat.color + '">' +
+             '<div class="item-grip">' +
+               '<button class="btn btn-icon" data-act="item-up" data-day="' + day.id + '" data-id="' + it.id + '" title="Move earlier"' + (i === 0 ? ' disabled' : '') + '>▲</button>' +
+               '<button class="btn btn-icon" data-act="item-down" data-day="' + day.id + '" data-id="' + it.id + '" title="Move later"' + (i === c.rows.length - 1 ? ' disabled' : '') + '>▼</button>' +
+             '</div>' +
+             '<div class="item-main">' +
+               '<div class="item-top">' +
+                 '<span class="num-badge">' + r.n + '</span>' +
+                 '<input class="inp item-time" type="time" data-act="item-time" data-day="' + day.id + '" data-id="' + it.id + '" value="' + esc(it.time) + '">' +
+                 '<input class="inp item-dur" type="number" min="0" step="5" data-act="item-dur" data-day="' + day.id + '" data-id="' + it.id + '" value="' + (parseFloat(it.dur) || 0) + '" title="Minutes spent here">' +
+                 '<span class="card-note">min</span>' +
+                 '<span class="spacer"></span>' +
+                 '<button class="btn btn-icon btn-danger" data-act="item-del" data-day="' + day.id + '" data-id="' + it.id + '" title="Remove stop">🗑</button>' +
+               '</div>' +
+               '<div class="item-row2">' +
+                 '<span class="item-ico">' + (r.pt ? cat.icon : '✏️') + '</span>' +
+                 '<select class="inp" style="flex:1" data-act="item-pin" data-day="' + day.id + '" data-id="' + it.id + '">' +
+                   '<option value="">— type a place instead —</option>' +
+                   S.cities[day.city].pins.slice().sort(function (a, b) { return a.name.localeCompare(b.name); })
+                     .map(function (p) {
+                       return '<option value="' + p.id + '"' + (it.pinId === p.id ? ' selected' : '') + '>' +
+                              (CATS[p.cat] || CATS.other).icon + ' ' + esc(p.name) + '</option>';
+                     }).join('') +
+                 '</select>' +
+                 (r.pt ? '<button class="btn btn-icon" data-act="pin-focus" data-id="' + r.pt.id + '" title="Show on map">🔎</button>' : '') +
+               '</div>' +
+               (!it.pinId ? '<input class="inp" data-act="item-place" data-day="' + day.id + '" data-id="' + it.id +
+                 '" value="' + esc(it.place) + '" placeholder="Lunch somewhere on Carrer de Blai…">' : '') +
+               '<textarea class="inp" style="min-height:44px" data-act="item-notes" data-day="' + day.id + '" data-id="' + it.id +
+                 '" placeholder="Notes: booking ref, who you are meeting, what to order, cost…">' + esc(it.notes) + '</textarea>' +
+             '</div>' +
+           '</div>';
+    });
+
+    h += '<div class="form-actions"><button class="btn btn-sm btn-primary" data-act="item-add" data-day="' + day.id + '">+ Add stop</button>' +
+         '<button class="btn btn-sm" data-act="day-sort" data-day="' + day.id + '">Sort by time</button></div>';
+
+    h += '<details class="box" style="margin-top:var(--sp-sm)"' + (day.notes ? ' open' : '') + '>' +
+           '<summary>Day notes' + (day.notes ? '' : ' (empty)') + '</summary>' +
+           '<div class="box-body"><textarea class="inp" data-act="day-notes" data-id="' + day.id +
+           '" placeholder="Tickets to collect, who has the keys, weather, reservations…">' + esc(day.notes) + '</textarea></div>' +
+         '</details>';
+    h += '</div>';   /* day-body */
+
+    h += '<div class="day-totals">' +
+           '<span>Stops <b>' + c.stops + '</b></span>' +
+           '<span>Travel <b>' + fmtMin(c.travelMin) + '</b></span>' +
+           '<span>On foot <b>' + fmtKm(c.walkKm) + '</b></span>' +
+           '<span>Fares <b>' + fmtMoney(c.fare, cur) + '</b></span>' +
+           (c.start !== null ? '<span>Window <b>' + minToHHMM(c.start) + '–' + minToHHMM(c.end) + '</b></span>' : '') +
+         '</div>';
+
+    return h + '</div>';
+  }).join('');
+}
+
+function addDay() {
+  const date = byId('sd-date').value || todayISO();
+  const day = { id: uid(), date: date, city: byId('sd-city').value, title: byId('sd-title').value.trim(), notes: '', items: [] };
+  S.days.push(day);
+  S.focusDayId = day.id;
+  byId('sd-title').value = '';
+  byId('day-status').textContent = 'Added ' + fmtDate(date) + ' in ' + CITIES[day.city].name + '. It is now focused on the map.';
+  if (day.city !== S.activeCity) setCity(day.city); else { save(); renderAll(); }
+}
+
+function addItem(dayId, pinId) {
+  const day = dayById(dayId);
+  if (!day) return;
+  const c = dayComputed(day);
+  /* Start where the previous stop ended, so a day builds itself forward. */
+  const start = (c.end === null) ? 9 * 60 : c.end + 15;
+  day.items.push({ id: uid(), time: minToHHMM(start), pinId: pinId || null, place: '', dur: 60, mode: 'walk', notes: '' });
+  save();
+  renderAll();
+}
+
+/* Put a place onto a day from the map popup or the places list. */
+function pinToDay(pinId) {
+  const pin = pinById(S.activeCity, pinId);
+  if (!pin) return;
+  let day = focusedDay();
+  if (!day || day.city !== S.activeCity) {
+    day = S.days.filter(function (d) { return d.city === S.activeCity; })
+                .sort(function (a, b) { return a.date < b.date ? -1 : 1; })[0];
+  }
+  if (!day) {
+    showPanel('schedule');
+    byId('sd-city').value = S.activeCity;
+    byId('day-status').textContent = 'Add a day in ' + CITIES[S.activeCity].name + ' first, then “' + pin.name + '” can go on it.';
+    byId('day-status').classList.add('err');
+    toast('No ' + CITIES[S.activeCity].name + ' day yet — add one.');
+    return;
+  }
+  S.focusDayId = day.id;
+  addItem(day.id, pinId);
+  showPanel('schedule');
+  toast('“' + pin.name + '” added to ' + fmtDate(day.date) + '.');
+}
+
+
+/* ─── Focused-day leg routing ───────────────────────────────────── */
+
+/* The rail beside the map shows a journey as estimates. For a bus or
+   train leg the interesting part is WHICH line you take, and that only
+   exists in a real timetable lookup — so the focused day's transit legs
+   are routed in the background, one at a time, and the line appears on
+   the rail when it arrives. Everything is cached and nothing is ever
+   re-requested; a failure just leaves the estimate in place. */
+const legRoutes = {};        /* dayId|itemId -> route, or { failed: true } */
+const legJobs = {};
+let legQueue = [], legWorking = false, activeLegKey = null;
+
+/* The cached answer belongs to one leg AS IT IS NOW. Leave the mode or
+   the departure time out of the key and switching a leg from Walk to
+   Métro keeps showing you the walk. */
+function legKey(day, it, depart) {
+  return day.id + '|' + it.id + '|' + it.mode + '|' +
+         (depart === null || depart === undefined ? '' : Math.round(depart));
+}
+
+/* Which departure to ask the timetable about: this day's own date, at the
+   moment you leave the stop before. A date that has already passed has no
+   timetable left, so fall forward to the next same weekday — what a
+   recurring service looks like — and say so where it is shown. */
+function legDepartISO(day, minutes) {
+  const d = parseDate(day.date);
+  if (!d || minutes === null || minutes === undefined) return null;
+  d.setHours(0, Math.round(minutes), 0, 0);
+  let shifted = false;
+  let guard = 0;
+  while (d.getTime() < Date.now() + 60000 && guard++ < 520) {
+    d.setDate(d.getDate() + 7);
+    shifted = true;
+  }
+  return { iso: d.toISOString(), shifted: shifted };
+}
+
+function queueLegRoutes(day, comp) {
+  if (typeof fetch !== 'function') return;
+  comp.rows.forEach(function (r, i) {
+    if (i === 0 || !r.pt || !r.leg || r.leg.zero) return;
+    const prev = comp.rows[i - 1];
+    if (!prev.pt) return;
+    const k = legKey(day, r.it, r.depart);
+    if (legRoutes[k] || legJobs[k]) return;      /* done, or already queued */
+    const when = legDepartISO(day, r.depart);
+    if (!when) return;
+    legJobs[k] = { mode: r.it.mode, from: prev.pt.latlng, to: r.pt.latlng, when: when,
+                   fromLabel: prev.pt.label, toLabel: r.pt.label };
+    legQueue.push(k);
+  });
+  runLegQueue();
+}
+
+function runLegQueue() {
+  if (legWorking || !legQueue.length) return;
+  legWorking = true;
+  const k = legQueue.shift(), job = legJobs[k];
+  const work = TRANSIT_FILTER[job.mode]
+    ? transitRoute(job.mode, job.from, job.to, job.when.iso)
+    : streetRoute(job.mode, job.from, job.to);
+  work.then(function (route) {
+    route.shifted = job.when.shifted;
+    route.fromLabel = job.fromLabel;
+    route.toLabel = job.toLabel;
+    legRoutes[k] = route;
+  }, function () {
+    legRoutes[k] = { failed: true };
+  }).then(function () {
+    legWorking = false;
+    renderFocus();
+    drawMap();            /* the day's line grows as each leg comes back */
+    runLegQueue();
+  });
+}
+
+/* The transit lines a routed leg actually uses. */
+function legLines(k) {
+  const rt = legRoutes[k];
+  if (!rt || rt.failed || !rt.legs) return [];
+  return rt.legs.filter(function (l) { return l.kind === 'transit'; });
+}
+
+/* Draw one step of the schedule on the map, on demand. */
+function showLegOnMap(dayId, itemId) {
+  const day = dayById(dayId);
+  if (!day) return;
+  const comp = dayComputed(day);
+  let idx = -1;
+  comp.rows.forEach(function (r, i) { if (r.it.id === itemId) idx = i; });
+  if (idx < 1) return;
+  const prev = comp.rows[idx - 1], row = comp.rows[idx];
+  if (!prev.pt || !row.pt) {
+    toast('That step has no coordinates — link both stops to saved places first.', true);
+    return;
+  }
+  if (day.city !== S.activeCity) setCity(day.city);   /* draw it on its own city's map */
+
+  const k = legKey(day, row.it, row.depart);
+  const cached = legRoutes[k];
+  if (cached && !cached.failed) {
+    activeLegKey = k;
+    navRoute = cached;
+    drawNavRoute(cached);
+    renderFocus(); renderTravel();
+    return;
+  }
+
+  activeLegKey = k;
+  renderFocus();
+  const mode = row.it.mode;
+  const when = legDepartISO(day, row.depart);
+  const work = TRANSIT_FILTER[mode]
+    ? transitRoute(mode, prev.pt.latlng, row.pt.latlng, (when || {}).iso || whenISO())
+    : streetRoute(mode, prev.pt.latlng, row.pt.latlng);
+  toast('Routing ' + modeLabel(mode, day.city) + ' to ' + row.pt.label + '…');
+  work.then(function (route) {
+    route.fromLabel = prev.pt.label;
+    route.toLabel = row.pt.label;
+    route.shifted = when ? when.shifted : false;
+    legRoutes[k] = route;
+    navRoute = route;
+    drawNavRoute(route);
+    renderFocus(); renderTravel();
+  }, function () {
+    legRoutes[k] = { failed: true };
+    activeLegKey = null;
+    renderFocus();
+    toast('No route came back for that step — the estimate still stands.', true);
+  });
+}
+
+/* ─── 6d. FOCUS RAIL — the focused day, visible from every tab ──── */
+
+function renderFocus() {
+  const day = focusedDay();
+  const wrap = byId('focus-rail-wrap');
+  const sum = byId('focus-summary');
+  byId('btn-focus-clear').classList.toggle('hidden', !day);
+
+  if (!day) {
+    const next = S.days.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; })[0];
+    sum.textContent = 'Nothing focused';
+    wrap.innerHTML = '<div class="empty">No day focused.' +
+      (next ? ' <button class="btn btn-sm" data-act="day-focus" data-id="' + next.id + '">Focus ' + esc(fmtDate(next.date)) + '</button>' : '') +
+      '</div>';
+    return;
+  }
+
+  const c = dayComputed(day);
+  const cur = CITIES[day.city].currency;
+  sum.textContent = fmtDate(day.date) + ' · ' + CITIES[day.city].name + ' · ' + c.stops +
+    (c.stops === 1 ? ' stop · ' : ' stops · ') + fmtMin(c.travelMin) + ' travelling' +
+    (day.city !== S.activeCity ? ' (switch city to see its pins)' : '');
+
+  if (!c.rows.length) {
+    wrap.innerHTML = '<div class="empty">This day has no stops yet. Add them in the Schedule tab, or click a place on the map and press <b>+ Schedule</b>.</div>';
+    return;
+  }
+
+  queueLegRoutes(day, c);          /* fills in the line names in the background */
+  let h = '<div class="focus-rail">';
+  c.rows.forEach(function (r, i) {
+    if (i > 0) {
+      const k = legKey(day, r.it, r.depart);
+      const rt = legRoutes[k];
+      const routed = rt && !rt.failed ? rt : null;
+      const lines = legLines(k);
+      const waiting = !rt && TRANSIT_FILTER[r.it.mode] && r.pt && c.rows[i - 1].pt && r.leg && !r.leg.zero;
+      h += '<div class="focus-leg clickable' + (activeLegKey === k ? ' on' : '') + '"' +
+             ' data-act="leg-route" data-day="' + day.id + '" data-id="' + r.it.id + '"' +
+             ' title="Show this step on the map">' +
+           '<span class="fl-ico">' + MODE_ICON[r.it.mode] + '</span>' +
+           (lines.length
+             ? '<span class="fl-lines">' + lines.map(function (l) {
+                 return '<span class="line-chip sm" style="background:' + (l.color || 'var(--blue)') + '"' +
+                        (l.headsign ? ' title="towards ' + esc(l.headsign) + '"' : '') + '>' +
+                        esc(l.line || l.vehicle) + '</span>';
+               }).join('') + '</span>'
+             : (waiting ? '<span class="fl-pending">finding line…</span>' : '')) +
+           '<span class="fl-txt">' +
+             (routed ? fmtMin(routed.min) : (r.leg && !r.leg.zero ? fmtMin(r.leg.min) : (r.leg ? '—' : '?'))) +
+           '</span>' +
+           (routed ? '<span class="fl-txt">' + fmtKm(routed.km) + '</span>'
+                   : (r.leg && !r.leg.zero ? '<span class="fl-txt">' + fmtKm(r.leg.routeKm) + '</span>' : '')) +
+           (r.short > 0 ? '<span class="fl-txt" style="color:#fcd34d">tight</span>' : '') + '</div>';
+    }
+    const cat = r.pt ? (CATS[r.pt.cat] || CATS.other) : CATS.other;
+    h += '<div class="focus-stop" data-stop="' + r.it.id + '" style="--cat:' + cat.color + '"' +
+         (r.pt ? ' data-act="pin-focus" data-id="' + r.pt.id + '" title="Show on map"' : '') + '>' +
+           '<div class="fs-time"><span class="num-badge">' + r.n + '</span>' +
+           (r.it.time ? esc(r.it.time) : (r.start !== null ? minToHHMM(r.start) : '--:--')) + '</div>' +
+           '<div class="fs-name">' + cat.icon + ' ' + esc(itemLabel(day, r.it)) + '</div>' +
+           (r.it.notes ? '<div class="fs-note">' + esc(r.it.notes) + '</div>' : '') +
+         '</div>';
+  });
+  h += '</div>';
+  h += '<div class="day-totals"><span>Fares <b>' + fmtMoney(c.fare, cur) + '</b></span>' +
+       '<span>On foot <b>' + fmtKm(c.walkKm) + '</b></span>' +
+       (c.start !== null ? '<span>Window <b>' + minToHHMM(c.start) + '–' + minToHHMM(c.end) + '</b></span>' : '') +
+       (day.notes ? '<span>📝 <b>' + esc(day.notes.split('\n')[0].slice(0, 60)) + '</b></span>' : '') +
+       '</div>';
+  wrap.innerHTML = h;
+}
+
+/* ─── 6e. NOTES PANEL ───────────────────────────────────────────── */
+
+function renderNotes() {
+  byId('nt-city').value = S.cities[S.activeCity].notes;
+  const filled = (S.notes ? 1 : 0) + CITY_ORDER.filter(function (k) { return S.cities[k].notes; }).length +
+                 S.days.filter(function (d) { return d.notes; }).length;
+  byId('badge-notes').textContent = filled ? filled + ' noted' : '—';
+
+  const city = S.cities[S.activeCity];
+  const counts = {};
+  city.pins.forEach(function (p) { counts[p.cat] = (counts[p.cat] || 0) + 1; });
+  const base = basePin();
+
+  let h = '<div class="chip-row">' + CAT_ORDER.filter(function (c) { return counts[c]; }).map(function (c) {
+    return '<span class="chip chip-static"><span class="dot" style="--cat:' + CATS[c].color + '"></span>' +
+           esc(CATS[c].label) + ' <b>' + counts[c] + '</b></span>';
+  }).join('') + '</div>';
+
+  h += '<div class="card-note">Base in ' + esc(CITIES[S.activeCity].name) + ': <b>' +
+       (base ? esc(base.name) : 'not set — use 🏠 on a place') + '</b></div>';
+
+  const days = S.days.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  if (days.length) {
+    h += '<table class="tbl"><thead><tr><th>Day</th><th>City</th><th class="num">Stops</th><th class="num">Travel</th></tr></thead><tbody>' +
+      days.map(function (d) {
+        const c = dayComputed(d);
+        return '<tr class="clickable" data-act="day-focus" data-id="' + d.id + '">' +
+               '<td>' + esc(fmtDate(d.date)) + (d.title ? ' <span class="card-note">' + esc(d.title) + '</span>' : '') + '</td>' +
+               '<td>' + CITIES[d.city].flag + ' ' + esc(CITIES[d.city].name) + '</td>' +
+               '<td class="num">' + c.stops + '</td>' +
+               '<td class="num">' + fmtMin(c.travelMin) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  byId('nt-glance').innerHTML = h;
+}
+
+
+/* ─── 7b. SYNC THROUGH A PRIVATE GITHUB REPO ────────────────────── */
+
+/* Two copies of this app — a laptop and a phone — each keep their own
+   browser storage, which is why they drift apart. This keeps one shared
+   copy of the trip as a JSON file in a private repository you own.
+
+   The token is read from this browser's storage and never written into
+   the page, so publishing the app cannot leak it. Give it Contents:
+   Read and write on that one private repo and nothing else.
+
+   Reconciliation is last-writer-wins on `updatedAt`, which is honest for
+   one person using two devices: whichever copy was edited more recently
+   is the one that survives. It is NOT safe for two people editing at the
+   same moment, and does not pretend to be. */
+const GH_CFG_KEY = 'tripOrganizer.github.v1';
+let ghCfg = null, ghSha = null, ghBusy = false, ghPending = false, ghTimer = null;
+
+function ghLoadCfg() {
+  try {
+    const raw = localStorage.getItem(GH_CFG_KEY);
+    ghCfg = raw ? JSON.parse(raw) : null;
+  } catch (e) { ghCfg = null; }
+  if (ghCfg && (!ghCfg.repo || !ghCfg.token)) ghCfg = null;
+}
+function ghSaveCfg() {
+  try { localStorage.setItem(GH_CFG_KEY, JSON.stringify(ghCfg)); } catch (e) {}
+}
+function ghContentsUrl() {
+  return 'https://api.github.com/repos/' + ghCfg.repo + '/contents/' +
+         String(ghCfg.path || 'trip.json').replace(/^\/+/, '');
+}
+function ghHeaders() {
+  return {
+    'Authorization': 'Bearer ' + ghCfg.token,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+}
+
+/* base64 that survives accents and emoji — btoa alone does not. */
+function b64encodeUtf8(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+function b64decodeUtf8(b64) {
+  const bin = atob(String(b64).replace(/\s/g, ''));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+function ghStatus(kind, msg) {
+  const h = byId('hdr-sync');
+  if (h) {
+    h.textContent = !ghCfg ? 'Trip Organizer'
+      : (kind === 'busy' ? 'Syncing…' : kind === 'error' ? 'Sync problem' : 'Synced');
+  }
+  const st = byId('gh-status');
+  if (st) { st.textContent = msg || ''; st.classList.toggle('err', kind === 'error'); }
+  const badge = byId('gh-state');
+  if (badge) badge.textContent = !ghCfg ? 'Off' : (kind === 'error' ? 'Problem' : kind === 'busy' ? 'Working' : 'On');
+}
+
+function ghError(e) {
+  const m = String((e && e.message) || e);
+  if (m === 'auth') {
+    ghStatus('error', 'GitHub refused the token. Check it has Contents: Read and write on that repo, and has not expired.');
+  } else if (m === 'repo') {
+    ghStatus('error', 'That repository was not found. Check the owner/name spelling, and that the token can see it.');
+  } else if (m === 'bad file') {
+    ghStatus('error', 'The file in the repo is not a trip backup. Point this at a different file, or delete that one.');
+  } else {
+    ghStatus('error', 'Could not reach GitHub. Your changes are saved on this device and will upload when it is reachable.');
+  }
+}
+
+/* Pull the shared copy and decide which way the data should move. */
+function ghPull() {
+  if (!ghCfg) return Promise.resolve();
+  ghStatus('busy', 'Checking GitHub…');
+  const url = ghContentsUrl() + '?ref=' + encodeURIComponent(ghCfg.branch || 'main') + '&nocache=' + Date.now();
+  return fetch(url, { headers: ghHeaders(), cache: 'no-store' }).then(function (r) {
+    if (r.status === 404) return null;                 /* nothing saved yet */
+    if (r.status === 401) throw new Error('auth');
+    if (r.status === 403) throw new Error('auth');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(function (data) {
+    if (!data) { ghSha = null; ghStatus('busy', 'No trip in the repo yet — uploading this one.'); return ghPush(); }
+    ghSha = data.sha;
+    let remote;
+    try { remote = JSON.parse(b64decodeUtf8(data.content)); } catch (e) { throw new Error('bad file'); }
+    const rAt = (typeof remote.updatedAt === 'number') ? remote.updatedAt : 0;
+    const lAt = S.updatedAt || 0;
+    if (rAt > lAt) {
+      adoptState(normalize(remote));
+      ghStatus('synced', 'Loaded the newer copy from GitHub.');
+      toast('Loaded the newer trip from GitHub.');
+    } else if (lAt > rAt) {
+      return ghPush();
+    } else {
+      ghStatus('synced', 'Up to date.');
+    }
+  }).catch(ghError);
+}
+
+function ghPush() {
+  if (!ghCfg) return Promise.resolve();
+  if (ghBusy) { ghPending = true; return Promise.resolve(); }
+  ghBusy = true;
+  ghStatus('busy', 'Saving to GitHub…');
+  const body = {
+    message: 'Trip update — ' + new Date().toISOString(),
+    content: b64encodeUtf8(JSON.stringify(S, null, 2)),
+    branch: ghCfg.branch || 'main'
+  };
+  if (ghSha) body.sha = ghSha;
+  return fetch(ghContentsUrl(), { method: 'PUT', headers: ghHeaders(), body: JSON.stringify(body) })
+    .then(function (r) {
+      if (r.status === 409 || r.status === 422) {
+        /* The file moved under us — take what is there and reconcile. */
+        ghBusy = false;
+        return ghPull();
+      }
+      if (r.status === 401 || r.status === 403) throw new Error('auth');
+      if (r.status === 404) throw new Error('repo');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json().then(function (d) {
+        ghSha = (d && d.content && d.content.sha) || null;
+        ghBusy = false;
+        ghStatus('synced', 'Saved to GitHub at ' + new Date().toLocaleTimeString() + '.');
+        if (ghPending) { ghPending = false; ghSchedulePush(); }
+      });
+    })
+    .catch(function (e) { ghBusy = false; ghError(e); });
+}
+
+/* Edits arrive in bursts; upload once the typing stops. */
+function ghSchedulePush() {
+  if (!ghCfg) return;
+  clearTimeout(ghTimer);
+  ghStatus('busy', 'Saving…');
+  ghTimer = setTimeout(ghPush, 2500);
+}
+
+function ghConnect() {
+  const repo = byId('gh-repo').value.trim().replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/, '').replace(/\/+$/, '');
+  const token = byId('gh-token').value.trim();
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) {
+    ghStatus('error', 'Write the repository as owner/name, for example yourname/trip-data.');
+    return;
+  }
+  if (!token) { ghStatus('error', 'Paste the access token you created on GitHub.'); return; }
+  ghCfg = {
+    repo: repo,
+    path: byId('gh-path').value.trim() || 'trip.json',
+    branch: byId('gh-branch').value.trim() || 'main',
+    token: token
+  };
+  ghSaveCfg();
+  ghSha = null;
+  renderGh();
+  ghPull();
+}
+
+function ghForget() {
+  if (!window.confirm('Forget the token on this device?\n\nThe trip stays in the repo and on this device; this browser just stops syncing.')) return;
+  ghCfg = null;
+  ghSha = null;
+  try { localStorage.removeItem(GH_CFG_KEY); } catch (e) {}
+  byId('gh-token').value = '';
+  renderGh();
+  ghStatus('off', 'Sync is off on this device.');
+}
+
+function renderGh() {
+  if (!byId('gh-repo')) return;
+  byId('gh-repo').value = ghCfg ? ghCfg.repo : (byId('gh-repo').value || '');
+  byId('gh-path').value = ghCfg ? ghCfg.path : (byId('gh-path').value || 'trip.json');
+  byId('gh-branch').value = ghCfg ? ghCfg.branch : (byId('gh-branch').value || 'main');
+  if (ghCfg) byId('gh-token').value = ghCfg.token;
+  byId('btn-gh-sync').disabled = !ghCfg;
+  byId('btn-gh-forget').disabled = !ghCfg;
+  ghStatus(ghCfg ? 'synced' : 'off', ghCfg ? '' : 'Not connected — this device keeps its own copy.');
+}
+
+/* ─── 7. IO ─────────────────────────────────────────────────────── */
+
+/* Swap in a whole trip and put every bound control back in step. */
+function adoptState(next) {
+  S = next;
+  editingPinId = null;
+  clearNav();
+  setDraft(null);
+  byId('trip-name').value = S.tripName;
+  byId('nt-trip').value = S.notes;
+  pinFormFill(null);
+  showPanel(S.activePanel);
+  renderAll();
+  fitCity();
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+  const slug = (S.tripName || 'trip').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'trip';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = slug + '-' + todayISO() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  toast('Exported. Keep that file — it is the only copy outside this browser.');
+}
+
+function importJSON(file) {
+  const reader = new FileReader();
+  reader.onload = function () {
+    let parsed;
+    try {
+      parsed = JSON.parse(String(reader.result));
+    } catch (e) {
+      toast('That file is not valid JSON.', true);
+      return;
+    }
+    const pinCount = CITY_ORDER.reduce(function (n, k) {
+      return n + (((parsed.cities || {})[k] || {}).pins || []).length;
+    }, 0);
+    const dayCount = (parsed.days || []).length;
+    if (!window.confirm('Replace everything currently in this organizer with the imported file?\n\n' +
+        'Importing: ' + pinCount + ' place(s), ' + dayCount + ' day(s).\n' +
+        'This cannot be undone — export first if you want to keep the current trip.')) return;
+    S = normalize(parsed);
+    editingPinId = null;
+    setDraft(null);
+    byId('trip-name').value = S.tripName;
+    byId('nt-trip').value = S.notes;
+    pinFormFill(null);
+    save();
+    renderAll();
+    fitCity();
+    toast('Imported ' + pinCount + ' place(s) and ' + dayCount + ' day(s).');
+  };
+  reader.onerror = function () { toast('Could not read that file.', true); };
+  reader.readAsText(file);
+}
+
+/* Plain-text itinerary: the thing you paste into a message or print. */
+function itineraryText() {
+  const out = [];
+  out.push(S.tripName);
+  out.push('='.repeat(S.tripName.length));
+  out.push('');
+  if (S.notes) { out.push('TRIP NOTES'); out.push(S.notes); out.push(''); }
+
+  const days = S.days.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  days.forEach(function (day) {
+    const c = dayComputed(day);
+    const cur = CITIES[day.city].currency;
+    out.push('── ' + weekday(day.date) + ' ' + fmtDate(day.date) + ' · ' + CITIES[day.city].name +
+             (day.title ? ' · ' + day.title : ''));
+    c.rows.forEach(function (r, i) {
+      if (i > 0 && r.leg && !r.leg.zero) {
+        out.push('        ' + MODE_ICON[r.it.mode] + ' ' + modeLabel(r.it.mode, day.city) + ' ' +
+                 fmtMin(r.leg.min) + ', ' + fmtKm(r.leg.routeKm) +
+                 (r.leg.fare > 0 ? ', ' + fmtMoney(r.leg.fare, cur) : '') +
+                 (r.short > 0 ? '  [tight by ' + Math.round(r.short) + ' min]' : ''));
+      }
+      const t = r.it.time || (r.start !== null ? minToHHMM(r.start) : '--:--');
+      out.push('  ' + t + '  ' + itineraryLabel(day, r.it) + '  (' + (parseFloat(r.it.dur) || 0) + ' min)');
+      if (r.it.notes) r.it.notes.split('\n').forEach(function (ln) { out.push('          ' + ln); });
+    });
+    out.push('        totals: ' + fmtMin(c.travelMin) + ' travelling, ' + fmtKm(c.walkKm) + ' on foot, ' +
+             fmtMoney(c.fare, cur) + ' fares');
+    if (day.notes) { out.push('        notes: ' + day.notes.replace(/\n/g, '\n               ')); }
+    out.push('');
+  });
+
+  CITY_ORDER.forEach(function (k) {
+    const city = S.cities[k];
+    if (!city.pins.length && !city.notes) return;
+    out.push('── ' + CITIES[k].name.toUpperCase() + ' — PLACES');
+    CAT_ORDER.forEach(function (cat) {
+      city.pins.filter(function (p) { return p.cat === cat; }).forEach(function (p) {
+        out.push('  ' + CATS[cat].icon + ' ' + p.name + (city.baseId === p.id ? '  [BASE]' : '') +
+                 (p.addr ? ' — ' + p.addr : '') + '  (' + p.lat.toFixed(5) + ', ' + p.lng.toFixed(5) + ')');
+        if (p.notes) p.notes.split('\n').forEach(function (ln) { out.push('      ' + ln); });
+      });
+    });
+    if (city.notes) { out.push('  notes: ' + city.notes.replace(/\n/g, '\n         ')); }
+    out.push('');
+  });
+
+  out.push('Travel times are modelled estimates (distance × detour ÷ speed + wait), not routed directions.');
+  return out.join('\n');
+}
+function itineraryLabel(day, it) {
+  const pt = itemPoint(day, it);
+  return pt ? pt.label : (it.place || 'Unnamed stop');
+}
+
+function copyItinerary() {
+  const text = itineraryText();
+  const done = function () { toast('Itinerary copied to the clipboard.'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text, done); });
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+function fallbackCopy(text, done) {
+  /* execCommand is deprecated but it is what works on a file:// page
+     without the clipboard permission. */
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:-1000px;left:0;opacity:0';
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  document.body.removeChild(ta);
+  if (ok) done(); else toast('Copy blocked by the browser — use Export instead.', true);
+}
+
+function toast(msg, isErr) {
+  if (!toastEl) {
+    toastEl = document.createElement('div');
+    toastEl.style.cssText = 'position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:5000;' +
+      'padding:9px 16px;border-radius:99px;font-size:.78rem;font-weight:600;backdrop-filter:blur(10px);' +
+      'background:rgba(18,28,52,.95);border:1px solid rgba(148,163,184,.22);box-shadow:0 10px 30px -8px rgba(0,0,0,.8);' +
+      'max-width:min(560px,90vw);text-align:center;transition:opacity .2s;pointer-events:none';
+    document.body.appendChild(toastEl);
+  }
+  toastEl.textContent = msg;
+  toastEl.style.color = isErr ? '#fca5a5' : '#34d399';
+  toastEl.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { toastEl.style.opacity = '0'; }, 3600);
+}
+
+/* ─── 8. ORCHESTRATION ──────────────────────────────────────────── */
+
+function renderCityTabs() {
+  byId('city-tabs').innerHTML = CITY_ORDER.map(function (k) {
+    const pins = S.cities[k].pins.length;
+    const days = S.days.filter(function (d) { return d.city === k; }).length;
+    return '<button class="city-tab' + (k === S.activeCity ? ' active' : '') + '" data-act="city" data-city="' + k + '">' +
+           '<span class="flag">' + CITIES[k].flag + '</span>' +
+           '<span>' + esc(CITIES[k].name) + '</span>' +
+           '<span class="cnt">' + pins + ' 📍 · ' + days + ' 🗓</span></button>';
+  }).join('');
+}
+
+/* One entry point, so no caller can update half the UI. */
+function renderAll() {
+  renderCityTabs();
+  renderCatChips();
+  renderPins();
+  renderTravel();
+  renderSchedule();
+  renderNotes();
+  renderFocus();
+  drawMap();
+}
+
+function showPanel(id) {
+  S.activePanel = id;
+  ['pins', 'travel', 'schedule', 'notes'].forEach(function (p) {
+    byId('panel-' + p).classList.toggle('hidden', p !== id);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.panel-tab'), function (b) {
+    b.classList.toggle('active', b.getAttribute('data-panel') === id);
+  });
+  saveUi();
+}
+
+function setCity(key) {
+  if (!CITIES[key]) return;
+  S.activeCity = key;
+  tvFrom = '__base'; tvTo = '';
+  clearNav();
+  editingPinId = null;
+  setDraft(null);
+  pinFormFill(null);
+  byId('pin-filter').value = '';
+  byId('map-search').value = '';
+  byId('search-results').classList.add('hidden');
+  if (mapOK()) map.setView(CITIES[key].center, CITIES[key].zoom);
+  saveUi();
+  renderAll();
+  fitCity();
+}
+
+/* ─── 9. EVENTS ─────────────────────────────────────────────────── */
+
+/* Delegated clicks. Every button that acts on data carries data-act,
+   which is also why buttons inside Leaflet popups work. */
+document.addEventListener('click', function (ev) {
+  const t = ev.target.closest('[data-act]');
+  if (!t) return;
+  const act = t.getAttribute('data-act');
+  const id = t.getAttribute('data-id');
+  const dayId = t.getAttribute('data-day');
+
+  switch (act) {
+    case 'city':
+      setCity(t.getAttribute('data-city'));
+      break;
+
+    case 'cat-toggle': {
+      const c = t.getAttribute('data-cat');
+      const i = S.catFilter.indexOf(c);
+      if (i >= 0) S.catFilter.splice(i, 1); else S.catFilter.push(c);
+      saveUi(); renderCatChips(); renderPins(); drawMap();
+      break;
+    }
+
+    case 'route-mode': requestRoute(t.getAttribute('data-mode')); break;
+    case 'leg-route': showLegOnMap(dayId, id); break;
+    case 'route-clear': clearNav(); renderTravel(); break;
+
+    case 'pin-focus': focusPin(id); break;
+    case 'pin-edit': {
+      const p = pinById(S.activeCity, id);
+      if (p) { showPanel('pins'); pinFormFill(p); byId('pf-name').focus();
+               byId('pf-coord-hint').innerHTML = 'Editing <b>' + esc(p.name) + '</b> — click the map to move it.'; }
+      if (mapOK()) map.closePopup();
+      break;
+    }
+    case 'pin-del': deletePin(id); break;
+    case 'pin-base': {
+      const city = S.cities[S.activeCity];
+      city.baseId = (city.baseId === id) ? null : id;
+      save(); renderAll();
+      if (mapOK()) map.closePopup();
+      toast(city.baseId ? 'Base set — distances now measure from here.' : 'Base cleared — measuring from the city centre.');
+      break;
+    }
+    case 'pin-from': tvFrom = id; showPanel('travel'); renderTravel(); if (mapOK()) map.closePopup(); break;
+    case 'pin-to':   tvTo   = id; showPanel('travel'); renderTravel(); if (mapOK()) map.closePopup(); break;
+    case 'pin-day':  pinToDay(id); if (mapOK()) map.closePopup(); break;
+
+    case 'search-pick': {
+      const lat = parseFloat(t.getAttribute('data-lat')), lng = parseFloat(t.getAttribute('data-lng'));
+      byId('pf-lat').value = lat.toFixed(5);
+      byId('pf-lng').value = lng.toFixed(5);
+      if (!byId('pf-name').value) byId('pf-name').value = t.getAttribute('data-name');
+      if (!byId('pf-addr').value) byId('pf-addr').value = t.getAttribute('data-full');
+      byId('search-results').classList.add('hidden');
+      byId('pf-geo-results').classList.add('hidden');
+      byId('map-search').value = '';
+      byId('pf-geo-status').textContent = 'Found — check the name and category, then save.';
+      setDraft([lat, lng]);
+      if (mapOK()) map.setView([lat, lng], 16);
+      showPanel('pins');
+      byId('pf-coord-hint').innerHTML = 'Found <b>' + lat.toFixed(5) + ', ' + lng.toFixed(5) + '</b> — check the category and save.';
+      break;
+    }
+
+    case 'map-retry':
+      hideMapNotice();
+      if (mapOK()) map.invalidateSize();
+      break;
+
+    case 'sched-scope':
+      S.schedFilter = (t.getAttribute('data-scope') === 'all') ? 'all' : 'city';
+      saveUi();
+      showPanel('schedule');
+      renderSchedule();
+      break;
+
+    case 'day-focus':
+      S.focusDayId = (S.focusDayId === id) ? null : id;
+      {
+        const d = dayById(S.focusDayId);
+        if (d && d.city !== S.activeCity) { setCity(d.city); break; }
+      }
+      save(); renderAll();
+      break;
+
+    case 'day-del': {
+      const d = dayById(id);
+      if (!d) break;
+      if (!window.confirm('Delete ' + fmtDate(d.date) + ' and its ' + d.items.length + ' stop(s)?')) break;
+      S.days = S.days.filter(function (x) { return x.id !== id; });
+      if (S.focusDayId === id) S.focusDayId = null;
+      save(); renderAll();
+      break;
+    }
+
+    case 'day-sort': {
+      const d = dayById(dayId);
+      if (!d) break;
+      /* Stops without a time keep their place relative to the timed ones. */
+      d.items.sort(function (a, b) {
+        const x = hhmmToMin(a.time), y = hhmmToMin(b.time);
+        if (x === null && y === null) return 0;
+        if (x === null) return 1;
+        if (y === null) return -1;
+        return x - y;
+      });
+      save(); renderAll();
+      break;
+    }
+
+    case 'item-add': addItem(dayId, null); break;
+
+    case 'item-up':
+    case 'item-down': {
+      const d = dayById(dayId);
+      if (!d) break;
+      const i = d.items.findIndex(function (x) { return x.id === id; });
+      const j = act === 'item-up' ? i - 1 : i + 1;
+      if (i < 0 || j < 0 || j >= d.items.length) break;
+      const tmp = d.items[i]; d.items[i] = d.items[j]; d.items[j] = tmp;
+      save(); renderAll();
+      break;
+    }
+
+    case 'item-del': {
+      const d = dayById(dayId);
+      if (!d) break;
+      d.items = d.items.filter(function (x) { return x.id !== id; });
+      save(); renderAll();
+      break;
+    }
+  }
+});
+
+/* Delegated change: anything a computation reads. `change` fires on blur
+   or commit, never per keystroke, so re-rendering here cannot steal focus. */
+document.addEventListener('change', function (ev) {
+  const t = ev.target.closest('[data-act]');
+  if (!t) return;
+  const act = t.getAttribute('data-act');
+  const id = t.getAttribute('data-id');
+  const dayId = t.getAttribute('data-day');
+
+  if (act === 'set-tiles') {
+    S.tiles = providerBy(t.value).key;
+    saveUi();
+    hideMapNotice();              /* clear the old host's verdict first */
+    applyTiles(S.tiles);
+    toast('Basemap: ' + providerBy(S.tiles).label);
+    return;
+  }
+
+  if (act === 'set-mode') {
+    const v = parseFloat(t.value);
+    const mode = t.getAttribute('data-mode'), field = t.getAttribute('data-field');
+    settingsFor()[mode][field] = isFinite(v) && v >= 0 ? v : CITIES[S.activeCity].defaults[mode][field];
+    t.value = settingsFor()[mode][field];
+    save(); renderTravel(); renderSchedule(); renderFocus(); renderPins();
+    return;
+  }
+
+  const day = dayId ? dayById(dayId) : (id ? dayById(id) : null);
+
+  if (act === 'day-date') {
+    if (!day) return;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t.value)) day.date = t.value;
+    save(); renderAll();
+    return;
+  }
+  if (act === 'day-city') {
+    if (!day) return;
+    const next = t.value;
+    if (!CITIES[next] || next === day.city) return;
+    /* Pins belong to a city. Keep the stop readable by demoting it to text. */
+    let moved = 0;
+    day.items.forEach(function (it) {
+      if (it.pinId) {
+        const p = pinById(day.city, it.pinId);
+        if (p) { it.place = p.name; moved++; }
+        it.pinId = null;
+      }
+    });
+    day.city = next;
+    save();
+    /* Follow the day to its new city: the list is scoped by city, so
+       staying put would make the day you just edited disappear, and its
+       stops can only be relinked to places of the city it now belongs to. */
+    if (next !== S.activeCity) setCity(next); else renderAll();
+    if (moved) toast(moved + ' stop(s) kept their name as text — relink them to ' + CITIES[next].name + ' places.');
+    return;
+  }
+
+  /* Free text was already stored on `input`. On blur, refresh the right
+     column so the always-visible focused day is never stale — but do NOT
+     rebuild the schedule panel, or tabbing to the next field would lose it. */
+  if (act === 'day-title' || act === 'day-notes') { renderFocus(); renderNotes(); return; }
+
+  if (!day) return;
+  const item = day.items.filter(function (x) { return x.id === id; })[0];
+  if (!item) return;
+
+  if (act === 'item-notes' || act === 'item-place') { renderFocus(); renderNotes(); return; }
+
+  switch (act) {
+    case 'item-time': item.time = /^\d{2}:\d{2}$/.test(t.value) ? t.value : ''; break;
+    case 'item-dur': {
+      const v = parseFloat(t.value);
+      item.dur = isFinite(v) && v >= 0 ? v : 0;
+      t.value = item.dur;
+      break;
+    }
+    case 'item-mode': item.mode = MODE_ORDER.indexOf(t.value) >= 0 ? t.value : 'walk'; break;
+    case 'item-pin': {
+      item.pinId = t.value || null;
+      if (item.pinId) item.place = '';
+      break;
+    }
+    default: return;
+  }
+  save(); renderSchedule(); renderFocus(); drawMap();
+});
+
+/* Delegated input: free text only. Saves, never re-renders. */
+document.addEventListener('input', function (ev) {
+  const t = ev.target.closest('[data-act]');
+  if (!t) return;
+  const act = t.getAttribute('data-act');
+  const id = t.getAttribute('data-id');
+  const dayId = t.getAttribute('data-day');
+
+  if (act === 'day-title' || act === 'day-notes') {
+    const d = dayById(id);
+    if (!d) return;
+    if (act === 'day-title') d.title = t.value; else d.notes = t.value;
+    saveSoon();
+    return;
+  }
+  if (act === 'item-notes' || act === 'item-place') {
+    const d = dayById(dayId);
+    if (!d) return;
+    const it = d.items.filter(function (x) { return x.id === id; })[0];
+    if (!it) return;
+    if (act === 'item-notes') it.notes = t.value; else it.place = t.value;
+    saveSoon();
+    /* Live-patch the one node in the focus rail rather than re-rendering,
+       so the note you are typing appears next to the map as you type. */
+    if (act === 'item-notes') {
+      const stop = document.querySelector('.focus-stop[data-stop="' + id + '"]');
+      if (stop) {
+        let n = stop.querySelector('.fs-note');
+        if (!n && t.value) { n = document.createElement('div'); n.className = 'fs-note'; stop.appendChild(n); }
+        if (n) n.textContent = t.value;
+      }
+    }
+  }
+});
+
+/* ─── Direct listeners ──────────────────────────────────────────── */
+
+function wire() {
+  Array.prototype.forEach.call(document.querySelectorAll('.panel-tab'), function (b) {
+    b.addEventListener('click', function () { showPanel(b.getAttribute('data-panel')); });
+  });
+
+  byId('trip-name').addEventListener('input', function () { S.tripName = this.value; saveSoon(); });
+  byId('nt-trip').addEventListener('input', function () { S.notes = this.value; saveSoon(); });
+  byId('nt-city').addEventListener('input', function () { S.cities[S.activeCity].notes = this.value; saveSoon(); });
+  byId('pin-filter').addEventListener('input', renderPins);
+
+  byId('btn-pin-save').addEventListener('click', savePinFromForm);
+  byId('btn-pin-clear').addEventListener('click', function () { pinFormFill(null); byId('pin-status').textContent = ''; });
+  byId('btn-pin-cancel').addEventListener('click', function () { pinFormFill(null); byId('pin-status').textContent = ''; });
+
+  /* Enter anywhere in the single-line place fields saves. */
+  ['pf-name', 'pf-lat', 'pf-lng', 'pf-addr'].forEach(function (f) {
+    byId(f).addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); savePinFromForm(); } });
+  });
+
+  byId('tv-from').addEventListener('change', function () { tvFrom = this.value; clearNav(); renderTravel(); });
+  byId('tv-to').addEventListener('change', function () { tvTo = this.value; clearNav(); renderTravel(); });
+  byId('tv-when').addEventListener('change', function () { clearNav(); renderTravel(); });
+  byId('tv-matrix-mode').addEventListener('change', function () { tvMatrixMode = this.value; renderTravel(); });
+  byId('btn-swap').addEventListener('click', function () {
+    const a = tvFrom; tvFrom = tvTo; tvTo = a; clearNav(); renderTravel();
+  });
+  byId('btn-settings-reset').addEventListener('click', function () {
+    S.cities[S.activeCity].settings = clone(CITIES[S.activeCity].defaults);
+    save(); renderAll();
+    toast(CITIES[S.activeCity].name + ' estimator reset to defaults.');
+  });
+
+  byId('btn-day-add').addEventListener('click', addDay);
+  byId('btn-sort-days').addEventListener('click', function () {
+    S.days.sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+    save(); renderAll();
+  });
+  byId('sd-title').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addDay(); } });
+
+  byId('btn-focus-clear').addEventListener('click', function () { S.focusDayId = null; save(); renderAll(); });
+
+  byId('btn-drop').addEventListener('click', function () {
+    this.classList.toggle('on');
+    this.title = this.classList.contains('on')
+      ? 'Clicking the map fills the coordinates in the Places form'
+      : 'Map clicks are ignored — turn this on to pin by clicking';
+  });
+  byId('btn-fit').addEventListener('click', fitCity);
+
+  byId('map-search').addEventListener('input', function () {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(runSearch, 450);
+  });
+  byId('btn-geo').addEventListener('click', function () { runGeocode('pf-geo', 'pf-geo-results'); });
+  byId('pf-geo').addEventListener('keydown', function (e) {
+    /* Enter here looks up the address; it must not submit the place yet. */
+    if (e.key === 'Enter') { e.preventDefault(); runGeocode('pf-geo', 'pf-geo-results'); }
+  });
+  byId('pf-geo').addEventListener('input', function () {
+    clearTimeout(searchTimer);
+    const v = this.value.trim();
+    if (v.length < 3) { byId('pf-geo-results').classList.add('hidden'); return; }
+    searchTimer = setTimeout(function () { runGeocode('pf-geo', 'pf-geo-results'); }, 650);
+  });
+  byId('map-search').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { clearTimeout(searchTimer); runSearch(); }
+    if (e.key === 'Escape') { byId('search-results').classList.add('hidden'); }
+  });
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.search-wrap')) byId('search-results').classList.add('hidden');
+  });
+
+  byId('btn-gh-connect').addEventListener('click', ghConnect);
+  byId('btn-gh-sync').addEventListener('click', function () { ghSha = null; ghPull(); });
+  byId('btn-gh-forget').addEventListener('click', ghForget);
+
+  byId('btn-export').addEventListener('click', exportJSON);
+  byId('btn-copy').addEventListener('click', copyItinerary);
+  byId('btn-import').addEventListener('click', function () { byId('file-import').click(); });
+  byId('file-import').addEventListener('change', function () {
+    if (this.files && this.files[0]) importJSON(this.files[0]);
+    this.value = '';
+  });
+}
+
+/* ─── 10. INIT ──────────────────────────────────────────────────── */
+
+function init() {
+  S = load();
+  if (!storageOK) {
+    storageWarn('This browser will not let the page store anything (private window?). Everything works, but nothing survives a reload — use Export.');
+  }
+  byId('trip-name').value = S.tripName;
+  byId('nt-trip').value = S.notes;
+  byId('sd-date').value = todayISO();
+  /* Tomorrow morning: a weekday-ish default that returns real timetables
+     rather than the thin overnight service. */
+  const when = new Date(Date.now() + 86400000);
+  when.setHours(9, 0, 0, 0);
+  byId('tv-when').value = when.getFullYear() + '-' + String(when.getMonth() + 1).padStart(2, '0') + '-' +
+    String(when.getDate()).padStart(2, '0') + 'T09:00';
+  renderCatSelect();
+  pinFormFill(null);
+  wire();
+  showPanel(S.activePanel);
+  initMap();
+  renderAll();
+  fitCity();
+  /* Web fonts can reflow the container after the map measured it. */
+  setTimeout(function () { if (mapOK()) map.invalidateSize(); }, 150);
+  setTimeout(function () { if (mapOK()) map.invalidateSize(); }, 600);
+  ghLoadCfg();
+  renderGh();
+  if (ghCfg) ghPull();          /* adopt the shared copy if it is newer */
+}
+
+init();
+})();
+</script>
+</body>
+</html>
