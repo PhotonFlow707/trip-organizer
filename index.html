@@ -168,7 +168,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 .spacer { margin-left: auto; }
 
 /* ── Panel tabs ───────────────────────────────────────────────── */
-.panel-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-xs); margin-bottom: var(--sp-md); }
+.panel-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--sp-xs); margin-bottom: var(--sp-md); }
 .panel-tab {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   padding: 9px 4px; border-radius: var(--radius-md); cursor: pointer;
@@ -248,8 +248,18 @@ select.inp {
 .pin-meta { font-size: .68rem; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 .pin-acts { display: flex; gap: 3px; flex: none; }
 .pin-note { font-size: .7rem; color: var(--text-2); margin-top: 4px; line-height: 1.5; white-space: pre-wrap; }
+.day-active {
+  font-size: .58rem; font-weight: 700; letter-spacing: .04em; flex: none;
+  color: var(--emerald-light); background: rgba(16,185,129,.14);
+  border: 1px solid var(--border-active); border-radius: 99px; padding: 2px 8px;
+}
 .base-tag { font-size: .58rem; font-weight: 700; color: var(--emerald-light); background: rgba(16,185,129,.14); border: 1px solid var(--border-active); border-radius: 99px; padding: 1px 6px; letter-spacing: .04em; flex: none; }
 
+.city-row { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
+.city-row .inp { padding: 7px 8px; font-size: .8rem; }
+.city-flag, .city-cur { width: 48px; flex: none; text-align: center; }
+.city-counts { flex: none; white-space: nowrap; }
+#city-results { position: static; margin-top: 5px; max-height: 220px; }
 .sched-bar { display: flex; align-items: center; gap: var(--sp-sm); flex-wrap: wrap; padding: 0 2px; }
 .empty { padding: var(--sp-lg) var(--sp-md); text-align: center; color: var(--text-3); font-size: .78rem; line-height: 1.6; }
 .empty .big { font-size: 1.8rem; display: block; margin-bottom: 6px; opacity: .5; }
@@ -365,6 +375,11 @@ tr.routing td { opacity: .65; }
 .search-item:last-child { border-bottom: 0; }
 .search-item:hover { background: var(--bg-hover); }
 .search-item .si-sub { font-size: .66rem; color: var(--text-3); margin-top: 1px; }
+.geo-tag {
+  font-size: .58rem; font-weight: 700; letter-spacing: .04em; margin-left: 6px;
+  color: #93c5fd; background: var(--blue-glow); border: 1px solid rgba(59,130,246,.35);
+  border-radius: 99px; padding: 1px 7px;
+}
 
 /* ── Focus strip — the focused day stays visible from every tab ── */
 .focus-rail { display: flex; align-items: stretch; overflow-x: auto; padding: var(--sp-sm) var(--sp-md) var(--sp-md); }
@@ -426,6 +441,28 @@ tr.routing td { opacity: .65; }
 .leg-bar::before { content: ''; position: absolute; left: 12px; top: 0; bottom: 0; width: 1px; background: repeating-linear-gradient(180deg, var(--border-strong) 0 3px, transparent 3px 7px); }
 .leg-bar select { width: auto; padding: 3px 22px 3px 7px; font-size: .7rem; background-position: calc(100% - 13px) 52%, calc(100% - 8px) 52%; }
 .leg-txt { font-variant-numeric: tabular-nums; }
+.att-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.att {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: 99px; padding: 2px 4px 2px 8px;
+}
+.att-name {
+  background: none; border: 0; cursor: pointer; padding: 2px 0;
+  color: var(--text-1); font-size: .72rem; font-weight: 600;
+  max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.att-name:hover { color: var(--emerald-light); text-decoration: underline; }
+.att-size { font-size: .62rem; color: var(--text-3); flex: none; }
+.att-x {
+  background: none; border: 0; cursor: pointer; color: var(--text-3);
+  font-size: .72rem; line-height: 1; padding: 3px 5px; border-radius: 99px; flex: none;
+}
+.att-x:hover { color: var(--red); background: rgba(239,68,68,.12); }
+.att-preview {
+  display: block; max-width: 100%; max-height: 320px; margin-top: 2px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+}
 .warn-chip { font-size: .62rem; font-weight: 600; color: #fcd34d; background: var(--amber-glow); border: 1px solid rgba(245,158,11,.28); border-radius: 99px; padding: 1px 7px; white-space: nowrap; }
 .ok-chip { font-size: .62rem; font-weight: 600; color: var(--emerald-light); background: rgba(16,185,129,.12); border: 1px solid var(--border-active); border-radius: 99px; padding: 1px 7px; white-space: nowrap; }
 
@@ -525,6 +562,7 @@ details.box > summary:hover { color: var(--text-1); }
       <button class="panel-tab" data-panel="travel"><span class="ico">🚆</span><span>Travel</span><span class="badge" id="badge-travel">5 modes</span></button>
       <button class="panel-tab" data-panel="schedule"><span class="ico">🗓️</span><span>Schedule</span><span class="badge" id="badge-schedule">0 days</span></button>
       <button class="panel-tab" data-panel="notes"><span class="ico">📝</span><span>Notes</span><span class="badge" id="badge-notes">—</span></button>
+      <button class="panel-tab" data-panel="trip"><span class="ico">🧭</span><span>Trip</span><span class="badge" id="badge-trip">1</span></button>
     </nav>
 
     <!-- Places ------------------------------------------------- -->
@@ -551,6 +589,8 @@ details.box > summary:hover { color: var(--text-1); }
               <button class="btn" id="btn-geo" title="Look up this address and fill in the coordinates">🔍 Find</button>
             </div>
             <div class="search-results hidden" id="pf-geo-results"></div>
+            <div class="card-note">Searches anywhere — results near the selected city come first, so a
+              travel day can pick up a station or hotel in another city.</div>
             <div class="status" id="pf-geo-status"></div>
           </div>
           <div class="row">
@@ -685,6 +725,60 @@ details.box > summary:hover { color: var(--text-1); }
       <div id="day-list"></div>
     </div>
 
+    <!-- Trip --------------------------------------------------- -->
+    <div class="panel hidden" id="panel-trip">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Trips</span>
+          <span class="spacer"></span>
+          <span class="card-note" id="trip-count"></span>
+        </div>
+        <div class="card-body">
+          <div class="field">
+            <label for="trip-select">Open trip</label>
+            <select class="inp" id="trip-select"></select>
+          </div>
+          <div class="form-actions">
+            <button class="btn" id="btn-trip-dup">Duplicate this trip</button>
+            <button class="btn btn-danger" id="btn-trip-del">Delete this trip</button>
+          </div>
+          <div class="field" style="margin-top:var(--sp-sm)">
+            <label for="trip-new-name">Start a new trip</label>
+            <input class="inp" id="trip-new-name" placeholder="Japan, spring 2027" autocomplete="off">
+          </div>
+          <div class="geo-row">
+            <input class="inp" id="trip-new-city" placeholder="First city — Tokyo" autocomplete="off">
+            <button class="btn btn-primary" id="btn-trip-new">Create</button>
+          </div>
+          <div class="status" id="trip-status"></div>
+          <div class="card-note">
+            Each trip keeps its own cities, places, schedule and notes. They all live in the one
+            synced file, so every trip is on every device.
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Cities in this trip</span></div>
+        <div class="card-body">
+          <div class="field">
+            <label for="city-new">Add a city</label>
+            <div class="geo-row">
+              <input class="inp" id="city-new" placeholder="Lisbon" autocomplete="off">
+              <button class="btn" id="btn-city-find">🔍 Find</button>
+            </div>
+            <div class="search-results hidden" id="city-results"></div>
+            <div class="status" id="city-status"></div>
+          </div>
+          <div id="city-list"></div>
+          <div class="card-note">
+            The name, flag and currency are yours to edit. Speeds and fares for each city live in
+            <b>Travel → Estimator settings</b> and start from a middling European profile.
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Notes -------------------------------------------------- -->
     <div class="panel hidden" id="panel-notes">
       <div class="card">
@@ -781,6 +875,7 @@ details.box > summary:hover { color: var(--text-1); }
     </div>
   </section>
 </main>
+<input type="file" id="att-file" hidden>
 
 <footer class="app-footer">
   <div class="card">
@@ -861,7 +956,11 @@ const MODE_ICON  = { walk: '🚶', bike: '🚲', bus: '🚌', rail: '🚇', taxi
      wait   minutes of fixed overhead: reach the stop, headway, boarding
      base   fare floor in EUR;  perKm  marginal fare in EUR/km
    Representative planning figures, not quoted tariffs — editable in the UI. */
-const CITIES = {
+/* The cities this app was first written for. They are no longer wired
+   into it — they seed a new trip, they are the shape every city record
+   follows, and they let a document saved before cities were data recover
+   its definitions. */
+const SEED_CITIES = {
   paris: {
     name: 'Paris', country: 'France', flag: '🇫🇷',
     center: [48.8566, 2.3522], zoom: 12, currency: '€',
@@ -900,7 +999,52 @@ const CITIES = {
     }
   }
 };
-const CITY_ORDER = ['paris', 'nancy', 'barcelona'];
+const SEED_ORDER = ['paris', 'nancy', 'barcelona'];
+
+/* What a city gets when the user adds one: neutral labels and a
+   middling European city profile, all editable afterwards. */
+const GENERIC_LABELS = { walk: 'Walk', bike: 'Bike', bus: 'Bus', rail: 'Metro / Rail', taxi: 'Taxi' };
+const GENERIC_DEFAULTS = {
+  walk: { speed: 4.8, detour: 1.25, wait: 0, base: 0,    perKm: 0    },
+  bike: { speed: 13,  detour: 1.25, wait: 3, base: 0,    perKm: 0    },
+  bus:  { speed: 14,  detour: 1.32, wait: 8, base: 2.00, perKm: 0    },
+  rail: { speed: 26,  detour: 1.15, wait: 8, base: 2.50, perKm: 0    },
+  taxi: { speed: 19,  detour: 1.28, wait: 5, base: 3.00, perKm: 1.30 }
+};
+
+/* Stands in for a city that has been removed while something still
+   points at it, so a stale reference degrades instead of throwing. */
+const MISSING_CITY = {
+  name: 'Unknown city', country: '', flag: '🏙', center: [0, 0], zoom: 12, currency: '€',
+  modeLabels: GENERIC_LABELS, defaults: GENERIC_DEFAULTS, settings: GENERIC_DEFAULTS,
+  pins: [], notes: '', baseId: null
+};
+
+/* A city is read from the trip now, never from the source. */
+function CITY(key) {
+  return (S && S.cities && S.cities[key]) || MISSING_CITY;
+}
+
+/* Build a city record: its definition and its contents in one object, so
+   every existing S.cities[...] read keeps working unchanged. */
+function makeCity(def) {
+  const c = {
+    name: String(def.name || 'City'),
+    country: String(def.country || ''),
+    flag: String(def.flag || '🏙'),
+    center: [ +def.center[0], +def.center[1] ],
+    zoom: isFinite(def.zoom) ? +def.zoom : 12,
+    currency: String(def.currency || '€'),
+    modeLabels: {}, defaults: {}, settings: {},
+    pins: [], notes: '', baseId: null
+  };
+  MODE_ORDER.forEach(function (m) {
+    c.modeLabels[m] = String((def.modeLabels && def.modeLabels[m]) || GENERIC_LABELS[m]);
+    c.defaults[m] = clone((def.defaults && def.defaults[m]) || GENERIC_DEFAULTS[m]);
+    c.settings[m] = clone(c.defaults[m]);
+  });
+  return c;
+}
 
 /* Basemaps. OpenStreetMap's own tile servers are deliberately NOT here:
    they are volunteer-run, their usage policy excludes general apps, and
@@ -976,21 +1120,23 @@ const SEED_PINS = {
 
 /* ─── 2. STATE ──────────────────────────────────────────────────── */
 
-let S = null;                 /* the single mutable state object      */
+let DOC = null;               /* every trip, and which one is open    */
+let S = null;                 /* the OPEN trip — all code below uses it */
 let storageOK = true;         /* false once localStorage has thrown   */
 let editingPinId = null;      /* place form is editing this id        */
 let draftLatLng = null;       /* preview marker for an unsaved place  */
 let saveTimer = null;
 
 function blankCity(key) {
-  return { pins: [], notes: '', settings: clone(CITIES[key].defaults), baseId: null };
+  return { pins: [], notes: '', settings: clone(CITY(key).defaults), baseId: null };
 }
 
 function defaultState() {
   const st = { v: 1, tripName: 'My Trip', activeCity: 'paris', activePanel: 'pins',
-               focusDayId: null, notes: '', cities: {}, days: [], catFilter: [], tiles: 'esriDark', schedFilter: 'city', updatedAt: 0 };
-  CITY_ORDER.forEach(function (k) {
-    st.cities[k] = blankCity(k);
+               focusDayId: null, notes: '', cities: {}, cityOrder: [], days: [], catFilter: [], tiles: 'esriDark', schedFilter: 'city', updatedAt: 0 };
+  SEED_ORDER.forEach(function (k) {
+    st.cities[k] = makeCity(SEED_CITIES[k]);
+    st.cityOrder.push(k);
     SEED_PINS[k].forEach(function (p) {
       st.cities[k].pins.push({ id: uid(), name: p.name, cat: p.cat, lat: p.lat, lng: p.lng,
                                addr: p.addr, notes: '' });
@@ -1019,16 +1165,41 @@ function normalize(raw) {
 
   st.tripName  = typeof raw.tripName === 'string' ? raw.tripName : 'My Trip';
   st.notes     = typeof raw.notes === 'string' ? raw.notes : '';
-  st.activeCity   = CITIES[raw.activeCity] ? raw.activeCity : 'paris';
-  st.activePanel  = ['pins', 'travel', 'schedule', 'notes'].indexOf(raw.activePanel) >= 0 ? raw.activePanel : 'pins';
+  st.activePanel  = ['pins', 'travel', 'schedule', 'notes', 'trip'].indexOf(raw.activePanel) >= 0 ? raw.activePanel : 'pins';
   st.tiles = providerBy(raw.tiles).key;
   st.schedFilter = raw.schedFilter === 'all' ? 'all' : 'city';
   st.updatedAt = (typeof raw.updatedAt === 'number' && isFinite(raw.updatedAt)) ? raw.updatedAt : 0;          /* unknown key falls back to the default */
   st.catFilter = Array.isArray(raw.catFilter) ? raw.catFilter.filter(function (c) { return CATS[c]; }) : [];
 
-  CITY_ORDER.forEach(function (k) {
-    const src = (raw.cities && raw.cities[k]) || {};
-    const city = blankCity(k);
+  /* Cities come from the document. One saved before cities were data
+     holds only pins, notes and settings per city, so each definition is
+     recovered from the seeds — that is what keeps an existing trip whole. */
+  /* The blank shape pre-seeds the original cities; this rebuild replaces
+     them wholesale rather than appending to them. */
+  st.cities = {};
+  st.cityOrder = [];
+  const rawCities = (raw.cities && typeof raw.cities === 'object') ? raw.cities : {};
+  let order = Array.isArray(raw.cityOrder)
+    ? raw.cityOrder.filter(function (k) { return rawCities[k]; }) : [];
+  Object.keys(rawCities).forEach(function (k) { if (order.indexOf(k) < 0) order.push(k); });
+  if (!order.length) order = SEED_ORDER.slice();
+
+  order.forEach(function (k) {
+    const src = rawCities[k] || {};
+    const seed = SEED_CITIES[k];
+    const def = {
+      name: src.name || (seed && seed.name) || k,
+      country: src.country || (seed && seed.country) || '',
+      flag: src.flag || (seed && seed.flag) || '🏙',
+      center: (Array.isArray(src.center) && isFinite(parseFloat(src.center[0])))
+        ? [parseFloat(src.center[0]), parseFloat(src.center[1])]
+        : (seed ? seed.center.slice() : [0, 0]),
+      zoom: isFinite(parseFloat(src.zoom)) ? parseFloat(src.zoom) : (seed ? seed.zoom : 12),
+      currency: src.currency || (seed && seed.currency) || '€',
+      modeLabels: (src.modeLabels || (seed && seed.modeLabels) || GENERIC_LABELS),
+      defaults: (src.defaults || (seed && seed.defaults) || GENERIC_DEFAULTS)
+    };
+    const city = makeCity(def);
     city.notes = typeof src.notes === 'string' ? src.notes : '';
     if (Array.isArray(src.pins)) {
       src.pins.forEach(function (p) {
@@ -1045,9 +1216,9 @@ function normalize(raw) {
         });
       });
     }
-    /* Mode settings: keep every default key, accept finite overrides only. */
+    /* Keep every default key; accept finite overrides only. */
     MODE_ORDER.forEach(function (m) {
-      const d = CITIES[k].defaults[m], got = (src.settings && src.settings[m]) || {};
+      const d = city.defaults[m], got = (src.settings && src.settings[m]) || {};
       Object.keys(d).forEach(function (f) {
         const v = parseFloat(got[f]);
         city.settings[m][f] = isFinite(v) && v >= 0 ? v : d[f];
@@ -1056,12 +1227,18 @@ function normalize(raw) {
     const ids = city.pins.map(function (p) { return p.id; });
     city.baseId = ids.indexOf(src.baseId) >= 0 ? src.baseId : null;
     st.cities[k] = city;
+    st.cityOrder.push(k);
   });
+  if (!st.cityOrder.length) {
+    st.cities.city1 = makeCity({ name: 'First city', center: [48.8566, 2.3522], zoom: 12 });
+    st.cityOrder.push('city1');
+  }
+  st.activeCity = st.cities[raw.activeCity] ? raw.activeCity : st.cityOrder[0];
 
   if (Array.isArray(raw.days)) {
     raw.days.forEach(function (d) {
       if (!d) return;
-      const city = CITIES[d.city] ? d.city : 'paris';
+      const city = CITY(d.city) ? d.city : 'paris';
       const day = {
         id: d.id || uid(),
         date: /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : todayISO(),
@@ -1070,7 +1247,10 @@ function normalize(raw) {
         notes: String(d.notes == null ? '' : d.notes),
         items: []
       };
-      const validIds = st.cities[city].pins.map(function (p) { return p.id; });
+      /* Any city's place is a valid target for a stop. */
+      const validIds = st.cityOrder.reduce(function (acc, k) {
+        return acc.concat(st.cities[k].pins.map(function (p) { return p.id; }));
+      }, []);
       if (Array.isArray(d.items)) {
         d.items.forEach(function (it) {
           if (!it) return;
@@ -1082,7 +1262,14 @@ function normalize(raw) {
             place: String(it.place == null ? '' : it.place),
             dur: isFinite(dur) && dur >= 0 ? dur : 60,
             mode: MODE_ORDER.indexOf(it.mode) >= 0 ? it.mode : 'walk',
-            notes: String(it.notes == null ? '' : it.notes)
+            notes: String(it.notes == null ? '' : it.notes),
+            files: Array.isArray(it.files) ? it.files.filter(function (f) {
+              return f && typeof f.path === 'string' && f.path;
+            }).map(function (f) {
+              return { id: f.id || uid(), name: String(f.name || 'file'),
+                       size: isFinite(f.size) ? f.size : 0, type: String(f.type || ''),
+                       path: String(f.path), sha: String(f.sha || '') };
+            }) : []
           });
         });
       }
@@ -1096,9 +1283,48 @@ function normalize(raw) {
 
 function defaultStateShape() {
   const st = { v: 1, tripName: 'My Trip', activeCity: 'paris', activePanel: 'pins',
-               focusDayId: null, notes: '', cities: {}, days: [], catFilter: [], tiles: 'esriDark', schedFilter: 'city', updatedAt: 0 };
-  CITY_ORDER.forEach(function (k) { st.cities[k] = blankCity(k); });
+               focusDayId: null, notes: '', cities: {}, cityOrder: [], days: [], catFilter: [], tiles: 'esriDark', schedFilter: 'city', updatedAt: 0 };
+  SEED_ORDER.forEach(function (k) { st.cities[k] = makeCity(SEED_CITIES[k]); st.cityOrder.push(k); });
   return st;
+}
+
+/* A trip is exactly what S has always been, plus an id and a name. The
+   document is a library of them. Anything saved before trips existed is
+   a single bare trip, and becomes the first entry. */
+function docFromTrip(trip) {
+  const id = trip.id || uid();
+  trip.id = id;
+  const doc = { v: 2, trips: {}, tripOrder: [id], activeTripId: id, updatedAt: trip.updatedAt || 0 };
+  doc.trips[id] = trip;
+  return doc;
+}
+
+function normalizeDoc(raw) {
+  if (raw && raw.trips && typeof raw.trips === 'object') {
+    const doc = { v: 2, trips: {}, tripOrder: [], activeTripId: null,
+                  updatedAt: isFinite(raw.updatedAt) ? raw.updatedAt : 0 };
+    let order = Array.isArray(raw.tripOrder)
+      ? raw.tripOrder.filter(function (k) { return raw.trips[k]; }) : [];
+    Object.keys(raw.trips).forEach(function (k) { if (order.indexOf(k) < 0) order.push(k); });
+    order.forEach(function (k) {
+      const t = normalize(raw.trips[k]);
+      t.id = k;
+      doc.trips[k] = t;
+      doc.tripOrder.push(k);
+      if (t.updatedAt > doc.updatedAt) doc.updatedAt = t.updatedAt;
+    });
+    if (!doc.tripOrder.length) return docFromTrip(defaultState());
+    doc.activeTripId = doc.trips[raw.activeTripId] ? raw.activeTripId : doc.tripOrder[0];
+    return doc;
+  }
+  /* one bare trip, as everything before this version saved it */
+  return docFromTrip(normalize(raw || {}));
+}
+
+function openTrip(id) {
+  DOC.activeTripId = id;
+  S = DOC.trips[id];
+  return S;
 }
 
 function load() {
@@ -1107,31 +1333,38 @@ function load() {
     raw = localStorage.getItem(STORE_KEY);
   } catch (e) {
     storageOK = false;
-    return defaultState();
+    DOC = docFromTrip(defaultState());
+    return openTrip(DOC.activeTripId);
   }
-  if (!raw) return defaultState();
+  if (!raw) { DOC = docFromTrip(defaultState()); return openTrip(DOC.activeTripId); }
   try {
-    return normalize(JSON.parse(raw));
+    DOC = normalizeDoc(JSON.parse(raw));
+    return openTrip(DOC.activeTripId);
   } catch (e) {
     /* Corrupt payload: keep it out of the way rather than destroying it. */
     try { localStorage.setItem(STORE_KEY + '.broken', raw); localStorage.removeItem(STORE_KEY); } catch (e2) {}
     storageWarn('Saved data could not be read, so the organizer reset to defaults. The unreadable copy is kept under ' + STORE_KEY + '.broken');
-    return defaultState();
+    DOC = docFromTrip(defaultState());
+    return openTrip(DOC.activeTripId);
   }
 }
 
 function save() {
   S.updatedAt = Date.now();
+  DOC.updatedAt = S.updatedAt;
   ghSchedulePush();
   if (!storageOK) return;
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(S));
+    localStorage.setItem(STORE_KEY, JSON.stringify(DOC));
   } catch (e) {
     storageOK = false;
     storageWarn('This browser refused to save (private window, or storage full). The page still works, but nothing will survive a reload — use Export.');
   }
 }
-function saveSoon() { clearTimeout(saveTimer); saveTimer = setTimeout(save, 400); }
+function saveSoon() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function () { saveTimer = null; save(); }, 400);
+}
 
 /* Which tab you are on, which city, which basemap: remembered on this
    device, but NOT an edit to the trip. If these bumped `updatedAt` they
@@ -1140,7 +1373,7 @@ function saveSoon() { clearTimeout(saveTimer); saveTimer = setTimeout(save, 400)
    done on the laptop. */
 function saveUi() {
   if (!storageOK) return;
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { storageOK = false; }
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(DOC)); } catch (e) { storageOK = false; }
 }
 
 function storageWarn(msg) {
@@ -1233,13 +1466,37 @@ function settingsFor(cityKey) { return S.cities[cityKey || S.activeCity].setting
 /* One leg, one mode. Returns straight-line km, estimated route km,
    minutes door-to-door and the fare. Two points under 30 m apart are
    the same place: no distance, and no boarding overhead either. */
+/* Past about 40 km you have left the city's own network, and its profile
+   becomes nonsense: 300 km is not "métro at 27 km/h for €2.50". These are
+   coarse western-European intercity figures, used only for legs that long.
+   Clicking a mode routes it for real and supersedes them entirely. */
+const INTERCITY_KM = 40;
+const INTERCITY = {
+  walk: { speed: 4.8, detour: 1.25, wait: 0,  base: 0,  perKm: 0    },
+  bike: { speed: 15,  detour: 1.25, wait: 5,  base: 0,  perKm: 0    },
+  bus:  { speed: 62,  detour: 1.30, wait: 45, base: 10, perKm: 0.04 },
+  rail: { speed: 190, detour: 1.10, wait: 30, base: 15, perKm: 0.12 },
+  taxi: { speed: 95,  detour: 1.25, wait: 10, base: 5,  perKm: 1.60 }
+};
+
+/* Which city's fares and speeds govern a point. */
+function cityForPoint(a, fallback) {
+  const n = nearestCity(a[0], a[1]);
+  return (n && n.km < 60 && S.cities[n.key]) ? n.key : (fallback || S.activeCity);
+}
+
 function legFor(a, b, mode, cityKey) {
-  const m = settingsFor(cityKey)[mode];
   const straight = haversine(a, b);
-  if (!m || straight < 0.03) return { straight: 0, routeKm: 0, min: 0, fare: 0, zero: true };
+  if (straight < 0.03) return { straight: 0, routeKm: 0, min: 0, fare: 0, zero: true, intercity: false };
+  const far = straight > INTERCITY_KM;
+  /* Price a leg by where it actually happens, not by which day it sits
+     on: a Paris hop on a Nancy day is still a Paris fare. */
+  const m = far ? INTERCITY[mode] : settingsFor(cityForPoint(a, cityKey))[mode];
+  if (!m) return { straight: straight, routeKm: 0, min: 0, fare: 0, zero: true, intercity: far };
   const routeKm = straight * m.detour;
   const min = m.wait + (m.speed > 0 ? 60 * routeKm / m.speed : Infinity);
-  return { straight: straight, routeKm: routeKm, min: min, fare: m.base + m.perKm * routeKm, zero: false };
+  return { straight: straight, routeKm: routeKm, min: min,
+           fare: m.base + m.perKm * routeKm, zero: false, intercity: far };
 }
 
 function allLegs(a, b, cityKey) {
@@ -1248,7 +1505,7 @@ function allLegs(a, b, cityKey) {
   return out;
 }
 function modeLabel(mode, cityKey) {
-  return CITIES[cityKey || S.activeCity].modeLabels[mode] || mode;
+  return CITY(cityKey || S.activeCity).modeLabels[mode] || mode;
 }
 
 /* ─── 5. MAP ────────────────────────────────────────────────────── */
@@ -1272,7 +1529,7 @@ function initMap() {
       'schedules are computed locally.';
     return;
   }
-  const city = CITIES[S.activeCity];
+  const city = CITY(S.activeCity);
   map = L.map('map', { center: city.center, zoom: city.zoom, zoomControl: true, worldCopyJump: true });
 
   applyTiles(S.tiles);
@@ -1444,7 +1701,9 @@ function popupHtml(pin) {
    order — used for numbered markers and the route line. */
 function focusOrder() {
   const day = focusedDay();
-  if (!day || day.city !== S.activeCity) return {};
+  /* Not gated on the day's own city any more: a travel day has stops in
+     two cities, and each should be numbered on the map it appears on. */
+  if (!day) return {};
   const out = {};
   let n = 0;
   day.items.forEach(function (it) {
@@ -1504,7 +1763,7 @@ function drawMap() {
 function fitCity() {
   if (!mapOK()) return;
   const pins = S.cities[S.activeCity].pins.filter(function (p) { return S.catFilter.indexOf(p.cat) < 0; });
-  if (!pins.length) { map.setView(CITIES[S.activeCity].center, CITIES[S.activeCity].zoom); return; }
+  if (!pins.length) { map.setView(CITY(S.activeCity).center, CITY(S.activeCity).zoom); return; }
   const b = L.latLngBounds(pins.map(function (p) { return [p.lat, p.lng]; }));
   map.fitBounds(b, { padding: [40, 40], maxZoom: 16 });
 }
@@ -1524,22 +1783,48 @@ let searchTimer = null, searchSeq = 0;
 /* One geocoder behind two front doors: the box above the map, and the
    address field in the Add-a-place form. The city is appended to the
    query so "9 Rue de Rivoli" finds the one in the city you are planning. */
-function geocode(q) {
-  const city = CITIES[S.activeCity];
-  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=6&accept-language=en&q=' +
-              encodeURIComponent(q + ', ' + city.name + ', ' + city.country);
+function geocode(q, noBias) {
+  /* This used to append ", <city>, <country>" to the query, which did not
+     bias the search — it FILTERED it. A travel day was impossible:
+     "Gare de Nancy-Ville" while Paris was selected returned nothing at
+     all. A viewbox with bounded=0 asks Nominatim to rank results near the
+     city you are planning first, while still finding everywhere else. */
+  const c = CITY(S.activeCity).center;
+  const box = (c[1] - 0.30).toFixed(3) + ',' + (c[0] + 0.25).toFixed(3) + ',' +
+              (c[1] + 0.30).toFixed(3) + ',' + (c[0] - 0.25).toFixed(3);
+  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=8&accept-language=en' +
+              (noBias ? '' : '&viewbox=' + box + '&bounded=0') + '&q=' + encodeURIComponent(q);
   return fetchJSON(url, 15000);
+}
+
+/* Which of the three cities a coordinate sits in, if any. Places are
+   stored per city, so one found elsewhere must not be filed silently
+   under whichever city happens to be selected. */
+function nearestCity(lat, lng) {
+  let key = null, km = Infinity;
+  S.cityOrder.forEach(function (k) {
+    const d = haversine([lat, lng], CITY(k).center);
+    if (d < km) { km = d; key = k; }
+  });
+  return { key: key, km: km };
 }
 
 function geoResultsHtml(list) {
   if (!list.length) return '<div class="search-item">No match. Try a fuller address, or click the map.</div>';
   return list.map(function (r) {
     const parts = String(r.display_name || '').split(',');
+    const where = parts.slice(1, 4).join(',').trim();
+    const country = parts.length > 1 ? parts[parts.length - 1].trim() : '';
+    const near = nearestCity(parseFloat(r.lat), parseFloat(r.lon));
+    /* Flag results that belong to one of the other two cities. */
+    const tag = (near.km < 60 && near.key !== S.activeCity)
+      ? ' <span class="geo-tag">' + esc(CITY(near.key).name) + '</span>' : '';
     return '<div class="search-item" data-act="search-pick" data-lat="' + parseFloat(r.lat) +
            '" data-lng="' + parseFloat(r.lon) +
            '" data-name="' + esc(parts[0].trim()) + '" data-full="' + esc(r.display_name) + '">' +
-           '<div>' + esc(parts[0].trim()) + '</div>' +
-           '<div class="si-sub">' + esc(parts.slice(1, 4).join(',').trim()) + '</div></div>';
+           '<div>' + esc(parts[0].trim()) + tag + '</div>' +
+           '<div class="si-sub">' + esc(where) + (country && where.indexOf(country) < 0 ? ' · ' + esc(country) : '') +
+           '</div></div>';
   }).join('');
 }
 
@@ -1563,6 +1848,19 @@ function runSearch() { runGeocode('map-search', 'search-results'); }
 
 /* ─── 6a. PLACES PANEL ──────────────────────────────────────────── */
 
+/* Places are filed per city for browsing, but a trip crosses cities, so
+   nothing that RESOLVES a place may be scoped to one. Ids are globally
+   unique, so searching them all is both correct and cheap. */
+function findPinAnywhere(id) {
+  if (!id) return null;
+  for (let i = 0; i < S.cityOrder.length; i++) {
+    const k = S.cityOrder[i];
+    const p = pinById(k, id);
+    if (p) return { pin: p, city: k };
+  }
+  return null;
+}
+
 function pinById(cityKey, id) {
   const list = S.cities[cityKey].pins;
   for (let i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
@@ -1578,7 +1876,7 @@ function baseOrCentre(cityKey) {
   const key = cityKey || S.activeCity;
   const p = basePin(key);
   if (p) return { latlng: [p.lat, p.lng], label: p.name, id: p.id };
-  return { latlng: CITIES[key].center.slice(), label: CITIES[key].name + ' centre', id: null };
+  return { latlng: CITY(key).center.slice(), label: CITY(key).name + ' centre', id: null };
 }
 
 function renderCatSelect() {
@@ -1619,10 +1917,21 @@ function renderPins() {
   const q = byId('pin-filter').value.trim().toLowerCase();
   const origin = baseOrCentre();
 
-  byId('pins-city-name').textContent = CITIES[S.activeCity].name;
-  byId('nt-city-name').textContent = CITIES[S.activeCity].name;
-  byId('map-city-title').textContent = CITIES[S.activeCity].name + ' · ' + CITIES[S.activeCity].country;
-  byId('tv-settings-city').textContent = CITIES[S.activeCity].name;
+  byId('pins-city-name').textContent = CITY(S.activeCity).name;
+  byId('nt-city-name').textContent = CITY(S.activeCity).name;
+  byId('map-city-title').textContent = CITY(S.activeCity).name + ' · ' + CITY(S.activeCity).country;
+  byId('tv-settings-city').textContent = CITY(S.activeCity).name;
+
+  /* Name the day the schedule button would use, so it is never a guess. */
+  const fd = focusedDay();
+  const addTarget = (fd && fd.city === S.activeCity) ? fd
+    : (function () {
+        const ds = S.days.filter(function (d) { return d.city === S.activeCity; });
+        return ds.length === 1 ? ds[0] : null;
+      })();
+  const addTip = addTarget
+    ? 'Add to ' + fmtDate(addTarget.date) + (addTarget.title ? ' — ' + addTarget.title : '')
+    : 'Choose a day first (press 👁 on it in Schedule)';
 
   const shown = city.pins.filter(function (p) {
     if (S.catFilter.indexOf(p.cat) >= 0) return false;
@@ -1636,7 +1945,7 @@ function renderPins() {
   if (!shown.length) {
     host.innerHTML = '<div class="empty"><span class="big">📍</span>' +
       (city.pins.length ? 'Nothing matches that filter.' :
-        'No places yet in ' + esc(CITIES[S.activeCity].name) + '.<br>Click the map, or search an address, then save it above.') +
+        'No places yet in ' + esc(CITY(S.activeCity).name) + '.<br>Click the map, or search an address, then save it above.') +
       '</div>';
     return;
   }
@@ -1668,7 +1977,7 @@ function renderPins() {
                 '<div class="pin-acts">' +
                   '<button class="btn btn-icon" data-act="pin-focus" data-id="' + p.id + '" title="Show on map">🔎</button>' +
                   '<button class="btn btn-icon' + (isBase ? ' on' : '') + '" data-act="pin-base" data-id="' + p.id + '" title="Use as base / hotel">🏠</button>' +
-                  '<button class="btn btn-icon" data-act="pin-day" data-id="' + p.id + '" title="Add to the focused day">🗓</button>' +
+                  '<button class="btn btn-icon" data-act="pin-day" data-id="' + p.id + '" title="' + esc(addTip) + '">🗓</button>' +
                   '<button class="btn btn-icon" data-act="pin-edit" data-id="' + p.id + '" title="Edit">✏️</button>' +
                   '<button class="btn btn-icon btn-danger" data-act="pin-del" data-id="' + p.id + '" title="Delete">🗑</button>' +
                 '</div>' +
@@ -1718,7 +2027,7 @@ function savePinFromForm() {
   } else {
     data.id = uid();
     city.pins.push(data);
-    st.textContent = 'Added “' + name + '” to ' + CITIES[S.activeCity].name + '.';
+    st.textContent = 'Added “' + name + '” to ' + CITY(S.activeCity).name + '.';
   }
   pinFormFill(null);
   save();
@@ -1731,7 +2040,6 @@ function deletePin(id) {
   if (!p) return;
   const usedBy = [];
   S.days.forEach(function (d) {
-    if (d.city !== S.activeCity) return;
     d.items.forEach(function (it) { if (it.pinId === id) usedBy.push(fmtDate(d.date)); });
   });
   let msg = 'Delete “' + p.name + '”?';
@@ -1741,7 +2049,6 @@ function deletePin(id) {
 
   /* Keep the itinerary readable: detach rather than silently blank the stop. */
   S.days.forEach(function (d) {
-    if (d.city !== S.activeCity) return;
     d.items.forEach(function (it) { if (it.pinId === id) { it.pinId = null; it.place = p.name; } });
   });
   city.pins = city.pins.filter(function (x) { return x.id !== id; });
@@ -1759,35 +2066,37 @@ let tvFrom = '__base', tvTo = '', tvMatrixMode = 'walk';
 /* A select value resolves to a point: '__base', '__centre' or a pin id. */
 function resolvePoint(val, cityKey) {
   const key = cityKey || S.activeCity;
-  if (val === '__centre') return { latlng: CITIES[key].center.slice(), label: CITIES[key].name + ' centre' };
+  if (val === '__centre') return { latlng: CITY(key).center.slice(), label: CITY(key).name + ' centre', city: key };
   if (val === '__base') return baseOrCentre(key);
-  const p = pinById(key, val);
-  return p ? { latlng: [p.lat, p.lng], label: p.name, id: p.id } : null;
+  const hit = findPinAnywhere(val);
+  return hit ? { latlng: [hit.pin.lat, hit.pin.lng], label: hit.pin.name, id: hit.pin.id, city: hit.city } : null;
 }
 
 function pointOptions(sel) {
-  const city = S.cities[S.activeCity];
   let h = '<option value="__base"' + (sel === '__base' ? ' selected' : '') + '>🏠 Base — ' + esc(baseOrCentre().label) + '</option>' +
-          '<option value="__centre"' + (sel === '__centre' ? ' selected' : '') + '>◎ ' + esc(CITIES[S.activeCity].name) + ' centre</option>';
-  CAT_ORDER.forEach(function (cat) {
-    const group = city.pins.filter(function (p) { return p.cat === cat; });
-    if (!group.length) return;
-    group.sort(function (a, b) { return a.name.localeCompare(b.name); });
-    h += '<optgroup label="' + CATS[cat].icon + ' ' + esc(CATS[cat].label) + '">' +
-         group.map(function (p) {
-           return '<option value="' + p.id + '"' + (sel === p.id ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+          '<option value="__centre"' + (sel === '__centre' ? ' selected' : '') + '>◎ ' + esc(CITY(S.activeCity).name) + ' centre</option>';
+  /* Every city, the current one first: comparing a Paris hotel with a
+     Nancy station is the whole point of a travel day. */
+  const order = [S.activeCity].concat(S.cityOrder.filter(function (k) { return k !== S.activeCity; }));
+  order.forEach(function (k) {
+    const pins = S.cities[k].pins.slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
+    if (!pins.length) return;
+    h += '<optgroup label="' + CITY(k).flag + ' ' + esc(CITY(k).name) + '">' +
+         pins.map(function (p) {
+           return '<option value="' + p.id + '"' + (sel === p.id ? ' selected' : '') + '>' +
+                  (CATS[p.cat] || CATS.other).icon + ' ' + esc(p.name) + '</option>';
          }).join('') + '</optgroup>';
   });
   return h;
 }
 
 function renderTravel() {
-  const cur = CITIES[S.activeCity].currency;
+  const cur = CITY(S.activeCity).currency;
   const pins = S.cities[S.activeCity].pins;
 
   /* Keep the selects pointing at something real after an edit or city switch. */
-  if (tvTo && tvTo !== '__base' && tvTo !== '__centre' && !pinById(S.activeCity, tvTo)) tvTo = '';
-  if (tvFrom !== '__base' && tvFrom !== '__centre' && !pinById(S.activeCity, tvFrom)) tvFrom = '__base';
+  if (tvTo && tvTo !== '__base' && tvTo !== '__centre' && !findPinAnywhere(tvTo)) tvTo = '';
+  if (tvFrom !== '__base' && tvFrom !== '__centre' && !findPinAnywhere(tvFrom)) tvFrom = '__base';
   if (!tvTo) {
     const first = pins.filter(function (p) { return p.id !== S.cities[S.activeCity].baseId; })[0];
     tvTo = first ? first.id : '__centre';
@@ -1853,7 +2162,10 @@ function renderTravel() {
                '<td class="num">' + fmtMoney(l.fare, cur) + '</td></tr>';
       }).join('') + '</tbody>';
 
+    const crossCity = legs.walk && legs.walk.intercity;
     noteEl.innerHTML = '<b>' + esc(a.label) + ' → ' + esc(b.label) + '.</b> ' +
+      (crossCity ? '<b>Between cities</b> — these use coarse intercity figures, not ' +
+        esc(CITY(S.activeCity).name) + '\u2019s own fares and speeds. ' : '') +
       'Click a row to draw the real route on the map: walking, cycling and taxi follow the street ' +
       'network, bus and train come back as a timetabled journey with real lines. Until then the ' +
       'figures are estimates.';
@@ -1901,7 +2213,7 @@ function stat(val, unit, label) {
 
 function renderSettings() {
   const st = settingsFor();
-  const cur = CITIES[S.activeCity].currency;
+  const cur = CITY(S.activeCity).currency;
   let h = '<div></div>' +
           '<div class="sg-head">Speed<br>km/h</div><div class="sg-head">Detour<br>×</div>' +
           '<div class="sg-head">Wait<br>min</div><div class="sg-head">Base<br>' + cur + '</div>' +
@@ -2169,6 +2481,19 @@ function focusedDay() {
   for (let i = 0; i < S.days.length; i++) if (S.days[i].id === S.focusDayId) return S.days[i];
   return null;
 }
+/* The day you are editing IS the day in focus. Keeping those as two
+   separate ideas is exactly what let a place land on a day you were not
+   looking at: the schedule button used the focused day while you were
+   typing into a different card. Any interaction with a day now moves
+   focus to it, so the map, the rail and the schedule button always agree
+   about which day you mean. */
+function touchDay(dayId) {
+  if (!dayId || S.focusDayId === dayId || !dayById(dayId)) return false;
+  S.focusDayId = dayId;
+  saveUi();
+  return true;
+}
+
 function dayById(id) {
   for (let i = 0; i < S.days.length; i++) if (S.days[i].id === id) return S.days[i];
   return null;
@@ -2177,8 +2502,10 @@ function dayById(id) {
 /* A stop's location: a linked place, or nothing if it is free text. */
 function itemPoint(day, it) {
   if (!it.pinId) return null;
-  const p = pinById(day.city, it.pinId);
-  return p ? { latlng: [p.lat, p.lng], label: p.name, cat: p.cat, id: p.id } : null;
+  const hit = findPinAnywhere(it.pinId);
+  if (!hit) return null;
+  const p = hit.pin;
+  return { latlng: [p.lat, p.lng], label: p.name, cat: p.cat, id: p.id, city: hit.city };
 }
 function itemLabel(day, it) {
   const pt = itemPoint(day, it);
@@ -2219,11 +2546,26 @@ function dayComputed(day) {
            start: firstStart, end: prevEnd, stops: day.items.length };
 }
 
+/* The day's own city first — that is the common case — then the others,
+   so a travel day can reach a station at the far end. */
+function pinOptionGroups(firstCity, selectedId) {
+  const order = [firstCity].concat(S.cityOrder.filter(function (k) { return k !== firstCity; }));
+  return order.map(function (k) {
+    const pins = S.cities[k].pins.slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
+    if (!pins.length) return '';
+    return '<optgroup label="' + CITY(k).flag + ' ' + esc(CITY(k).name) + '">' +
+      pins.map(function (p) {
+        return '<option value="' + p.id + '"' + (selectedId === p.id ? ' selected' : '') + '>' +
+               (CATS[p.cat] || CATS.other).icon + ' ' + esc(p.name) + '</option>';
+      }).join('') + '</optgroup>';
+  }).join('');
+}
+
 function renderSchedule() {
   byId('badge-schedule').textContent = S.days.length + (S.days.length === 1 ? ' day' : ' days');
-  byId('sd-city').innerHTML = CITY_ORDER.map(function (k) {
+  byId('sd-city').innerHTML = S.cityOrder.map(function (k) {
     return '<option value="' + k + '"' + (k === S.activeCity ? ' selected' : '') + '>' +
-           CITIES[k].flag + ' ' + esc(CITIES[k].name) + '</option>';
+           CITY(k).flag + ' ' + esc(CITY(k).name) + '</option>';
   }).join('');
 
   /* A day belongs to a city — that is what makes its stops offer that
@@ -2237,7 +2579,7 @@ function renderSchedule() {
 
   byId('sched-scope').innerHTML =
     '<button class="chip' + (showAll ? '' : ' on') + '" data-act="sched-scope" data-scope="city">' +
-      CITIES[S.activeCity].flag + ' ' + esc(CITIES[S.activeCity].name) +
+      CITY(S.activeCity).flag + ' ' + esc(CITY(S.activeCity).name) +
       ' <span style="opacity:.7">' + cityDays.length + '</span></button>' +
     '<button class="chip' + (showAll ? ' on' : '') + '" data-act="sched-scope" data-scope="all">' +
       '🌍 All cities <span style="opacity:.7">' + S.days.length + '</span></button>';
@@ -2249,8 +2591,8 @@ function renderSchedule() {
   if (!shown.length) {
     host.innerHTML = '<div class="card"><div class="empty"><span class="big">🗓️</span>' +
       (S.days.length
-        ? 'No days in ' + esc(CITIES[S.activeCity].name) + ' yet. Add one above — its stops will then ' +
-          'offer ' + esc(CITIES[S.activeCity].name) + ' places.<br><br>' +
+        ? 'No days in ' + esc(CITY(S.activeCity).name) + ' yet. Add one above — its stops will then ' +
+          'offer ' + esc(CITY(S.activeCity).name) + ' places.<br><br>' +
           '<button class="btn btn-sm" data-act="sched-scope" data-scope="all">' +
           (S.days.length === 1 ? 'Show the one day you have' : 'Show all ' + S.days.length + ' days') +
           '</button>'
@@ -2262,9 +2604,9 @@ function renderSchedule() {
 
   host.innerHTML = shown.map(function (day) {
     const c = dayComputed(day);
-    const cityName = CITIES[day.city].name;
+    const cityName = CITY(day.city).name;
     const focused = S.focusDayId === day.id;
-    const cur = CITIES[day.city].currency;
+    const cur = CITY(day.city).currency;
 
     let h = '<div class="day-card' + (focused ? ' focused' : '') + '">';
 
@@ -2276,13 +2618,16 @@ function renderSchedule() {
            '</div>' +
            '<select class="day-title-inp" data-act="day-city" data-id="' + day.id + '" title="' + esc(cityName) +
              '" style="width:auto;flex:none">' +
-             CITY_ORDER.map(function (k) {
+             S.cityOrder.map(function (k) {
                return '<option value="' + k + '"' + (k === day.city ? ' selected' : '') + '>' +
-                      CITIES[k].flag + ' ' + esc(CITIES[k].name) + '</option>';
+                      CITY(k).flag + ' ' + esc(CITY(k).name) + '</option>';
              }).join('') +
            '</select>' +
            '<input class="day-title-inp" data-act="day-title" data-id="' + day.id + '" value="' + esc(day.title) + '" placeholder="Label this day…">' +
-           '<button class="btn btn-icon' + (focused ? ' on' : '') + '" data-act="day-focus" data-id="' + day.id + '" title="Show this day on the map">' + (focused ? '👁 On map' : '👁') + '</button>' +
+           (focused ? '<span class="day-active" title="New places and the map both use this day">Working on this day</span>' : '') +
+           '<button class="btn btn-icon' + (focused ? ' on' : '') + '" data-act="day-focus" data-id="' + day.id + '" title="' +
+             (focused ? 'This is the day new places are added to' : 'Work on this day — the map and new places will use it') + '">' +
+             (focused ? '👁 On map' : '👁') + '</button>' +
            '<button class="btn btn-icon btn-danger" data-act="day-del" data-id="' + day.id + '" title="Delete this day">🗑</button>' +
          '</div>';
 
@@ -2336,18 +2681,18 @@ function renderSchedule() {
                  '<span class="item-ico">' + (r.pt ? cat.icon : '✏️') + '</span>' +
                  '<select class="inp" style="flex:1" data-act="item-pin" data-day="' + day.id + '" data-id="' + it.id + '">' +
                    '<option value="">— type a place instead —</option>' +
-                   S.cities[day.city].pins.slice().sort(function (a, b) { return a.name.localeCompare(b.name); })
-                     .map(function (p) {
-                       return '<option value="' + p.id + '"' + (it.pinId === p.id ? ' selected' : '') + '>' +
-                              (CATS[p.cat] || CATS.other).icon + ' ' + esc(p.name) + '</option>';
-                     }).join('') +
+                   pinOptionGroups(day.city, it.pinId) +
                  '</select>' +
+                 (r.pt && r.pt.city !== day.city
+                   ? '<span class="geo-tag" title="This stop is in another city">' +
+                     esc(CITY(r.pt.city).name) + '</span>' : '') +
                  (r.pt ? '<button class="btn btn-icon" data-act="pin-focus" data-id="' + r.pt.id + '" title="Show on map">🔎</button>' : '') +
                '</div>' +
                (!it.pinId ? '<input class="inp" data-act="item-place" data-day="' + day.id + '" data-id="' + it.id +
                  '" value="' + esc(it.place) + '" placeholder="Lunch somewhere on Carrer de Blai…">' : '') +
                '<textarea class="inp" style="min-height:44px" data-act="item-notes" data-day="' + day.id + '" data-id="' + it.id +
                  '" placeholder="Notes: booking ref, who you are meeting, what to order, cost…">' + esc(it.notes) + '</textarea>' +
+               attListHtml(day, it) +
              '</div>' +
            '</div>';
     });
@@ -2380,7 +2725,7 @@ function addDay() {
   S.days.push(day);
   S.focusDayId = day.id;
   byId('sd-title').value = '';
-  byId('day-status').textContent = 'Added ' + fmtDate(date) + ' in ' + CITIES[day.city].name + '. It is now focused on the map.';
+  byId('day-status').textContent = 'Added ' + fmtDate(date) + ' in ' + CITY(day.city).name + '. It is now focused on the map.';
   if (day.city !== S.activeCity) setCity(day.city); else { save(); renderAll(); }
 }
 
@@ -2399,23 +2744,36 @@ function addItem(dayId, pinId) {
 function pinToDay(pinId) {
   const pin = pinById(S.activeCity, pinId);
   if (!pin) return;
-  let day = focusedDay();
-  if (!day || day.city !== S.activeCity) {
-    day = S.days.filter(function (d) { return d.city === S.activeCity; })
-                .sort(function (a, b) { return a.date < b.date ? -1 : 1; })[0];
-  }
-  if (!day) {
+  const cityDays = S.days.filter(function (d) { return d.city === S.activeCity; });
+  if (!cityDays.length) {
     showPanel('schedule');
     byId('sd-city').value = S.activeCity;
-    byId('day-status').textContent = 'Add a day in ' + CITIES[S.activeCity].name + ' first, then “' + pin.name + '” can go on it.';
+    byId('day-status').textContent = 'Add a day in ' + CITY(S.activeCity).name + ' first, then “' + pin.name + '” can go on it.';
     byId('day-status').classList.add('err');
-    toast('No ' + CITIES[S.activeCity].name + ' day yet — add one.');
+    toast('No ' + CITY(S.activeCity).name + ' day yet — add one.');
     return;
+  }
+
+  let day = focusedDay();          /* any city: a travel day spans two */
+  if (!day) {
+    if (cityDays.length === 1) {
+      day = cityDays[0];                 /* only one candidate: no ambiguity */
+    } else {
+      /* Several days and none chosen. Guessing the earliest is precisely
+         how places ended up on the wrong day — ask instead. */
+      showPanel('schedule');
+      byId('day-status').textContent = 'Which day should “' + pin.name + '” go on? Press 👁 on that day below, then add it again.';
+      byId('day-status').classList.add('err');
+      toast('Pick the day first — press 👁 on the day you are planning.', true);
+      return;
+    }
   }
   S.focusDayId = day.id;
   addItem(day.id, pinId);
   showPanel('schedule');
-  toast('“' + pin.name + '” added to ' + fmtDate(day.date) + '.');
+  toast('“' + pin.name + '” added to ' + fmtDate(day.date) +
+        (day.city !== S.activeCity ? ' (' + CITY(day.city).name + ' day)' : '') +
+        (day.title ? ' — ' + day.title : '') + '.');
 }
 
 
@@ -2515,8 +2873,6 @@ function showLegOnMap(dayId, itemId) {
     toast('That step has no coordinates — link both stops to saved places first.', true);
     return;
   }
-  if (day.city !== S.activeCity) setCity(day.city);   /* draw it on its own city's map */
-
   const k = legKey(day, row.it, row.depart);
   const cached = legRoutes[k];
   if (cached && !cached.failed) {
@@ -2569,8 +2925,8 @@ function renderFocus() {
   }
 
   const c = dayComputed(day);
-  const cur = CITIES[day.city].currency;
-  sum.textContent = fmtDate(day.date) + ' · ' + CITIES[day.city].name + ' · ' + c.stops +
+  const cur = CITY(day.city).currency;
+  sum.textContent = fmtDate(day.date) + ' · ' + CITY(day.city).name + ' · ' + c.stops +
     (c.stops === 1 ? ' stop · ' : ' stops · ') + fmtMin(c.travelMin) + ' travelling' +
     (day.city !== S.activeCity ? ' (switch city to see its pins)' : '');
 
@@ -2612,6 +2968,9 @@ function renderFocus() {
            '<div class="fs-time"><span class="num-badge">' + r.n + '</span>' +
            (r.it.time ? esc(r.it.time) : (r.start !== null ? minToHHMM(r.start) : '--:--')) + '</div>' +
            '<div class="fs-name">' + cat.icon + ' ' + esc(itemLabel(day, r.it)) + '</div>' +
+           ((r.it.files && r.it.files.length)
+             ? '<div class="fs-note">📎 ' + r.it.files.length +
+               (r.it.files.length === 1 ? ' file' : ' files') + '</div>' : '') +
            (r.it.notes ? '<div class="fs-note">' + esc(r.it.notes) + '</div>' : '') +
          '</div>';
   });
@@ -2628,7 +2987,7 @@ function renderFocus() {
 
 function renderNotes() {
   byId('nt-city').value = S.cities[S.activeCity].notes;
-  const filled = (S.notes ? 1 : 0) + CITY_ORDER.filter(function (k) { return S.cities[k].notes; }).length +
+  const filled = (S.notes ? 1 : 0) + S.cityOrder.filter(function (k) { return S.cities[k].notes; }).length +
                  S.days.filter(function (d) { return d.notes; }).length;
   byId('badge-notes').textContent = filled ? filled + ' noted' : '—';
 
@@ -2642,7 +3001,7 @@ function renderNotes() {
            esc(CATS[c].label) + ' <b>' + counts[c] + '</b></span>';
   }).join('') + '</div>';
 
-  h += '<div class="card-note">Base in ' + esc(CITIES[S.activeCity].name) + ': <b>' +
+  h += '<div class="card-note">Base in ' + esc(CITY(S.activeCity).name) + ': <b>' +
        (base ? esc(base.name) : 'not set — use 🏠 on a place') + '</b></div>';
 
   const days = S.days.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
@@ -2652,7 +3011,7 @@ function renderNotes() {
         const c = dayComputed(d);
         return '<tr class="clickable" data-act="day-focus" data-id="' + d.id + '">' +
                '<td>' + esc(fmtDate(d.date)) + (d.title ? ' <span class="card-note">' + esc(d.title) + '</span>' : '') + '</td>' +
-               '<td>' + CITIES[d.city].flag + ' ' + esc(CITIES[d.city].name) + '</td>' +
+               '<td>' + CITY(d.city).flag + ' ' + esc(CITY(d.city).name) + '</td>' +
                '<td class="num">' + c.stops + '</td>' +
                '<td class="num">' + fmtMin(c.travelMin) + '</td></tr>';
       }).join('') + '</tbody></table>';
@@ -2743,6 +3102,7 @@ function ghError(e) {
 function ghPull() {
   if (!ghCfg) return Promise.resolve();
   ghStatus('busy', 'Checking GitHub…');
+  ghLastPull = Date.now();
   const url = ghContentsUrl() + '?ref=' + encodeURIComponent(ghCfg.branch || 'main') + '&nocache=' + Date.now();
   return fetch(url, { headers: ghHeaders(), cache: 'no-store' }).then(function (r) {
     if (r.status === 404) return null;                 /* nothing saved yet */
@@ -2756,9 +3116,9 @@ function ghPull() {
     let remote;
     try { remote = JSON.parse(b64decodeUtf8(data.content)); } catch (e) { throw new Error('bad file'); }
     const rAt = (typeof remote.updatedAt === 'number') ? remote.updatedAt : 0;
-    const lAt = S.updatedAt || 0;
+    const lAt = DOC.updatedAt || 0;
     if (rAt > lAt) {
-      adoptState(normalize(remote));
+      adoptDoc(normalizeDoc(remote));
       ghStatus('synced', 'Loaded the newer copy from GitHub.');
       toast('Loaded the newer trip from GitHub.');
     } else if (lAt > rAt) {
@@ -2776,7 +3136,7 @@ function ghPush() {
   ghStatus('busy', 'Saving to GitHub…');
   const body = {
     message: 'Trip update — ' + new Date().toISOString(),
-    content: b64encodeUtf8(JSON.stringify(S, null, 2)),
+    content: b64encodeUtf8(JSON.stringify(DOC, null, 2)),
     branch: ghCfg.branch || 'main'
   };
   if (ghSha) body.sha = ghSha;
@@ -2798,6 +3158,19 @@ function ghPush() {
       });
     })
     .catch(function (e) { ghBusy = false; ghError(e); });
+}
+
+/* Coming back to the page is the moment to check for work done on the
+   other device: the way to lose edits is to change something on the
+   laptop, pick up the phone, and carry on editing a stale copy. */
+let ghLastPull = 0;
+function ghMaybePull() {
+  if (!ghCfg || ghBusy) return;
+  if (document.visibilityState && document.visibilityState !== 'visible') return;
+  if (Date.now() - ghLastPull < 8000) return;        /* not on every flicker */
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; save(); }
+  ghLastPull = Date.now();
+  ghPull();
 }
 
 /* Edits arrive in bursts; upload once the typing stops. */
@@ -2849,7 +3222,226 @@ function renderGh() {
   ghStatus(ghCfg ? 'synced' : 'off', ghCfg ? '' : 'Not connected — this device keeps its own copy.');
 }
 
+
+/* ─── 7c. ATTACHMENTS ───────────────────────────────────────────── */
+
+/* A ticket, a boarding pass, a photo of a confirmation screen, the
+   conference programme — attached to the stop it belongs to.
+
+   The files do NOT live in the trip JSON. One photo would exceed what a
+   browser will hold in local storage, and every small edit would re-upload
+   the lot. Instead each file is its own blob in the same private repo, and
+   the trip keeps a reference: name, size, type, path, sha. That makes them
+   available on every device that has the token, for free, with no second
+   service to set up. */
+const ATT_MAX = 8 * 1024 * 1024;
+let attTarget = null;                 /* which stop a pending upload is for */
+const attBlob = {};                   /* fileId -> object URL, this session  */
+const attShown = {};                  /* fileId -> true while previewed      */
+
+function fmtBytes(n) {
+  if (!isFinite(n) || n <= 0) return '';
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return Math.round(n / 1024) + ' KB';
+  return (n / 1048576).toFixed(1) + ' MB';
+}
+
+function attIsImage(f) {
+  return /^image\//.test(f.type || '') || /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name || '');
+}
+
+function attIcon(f) {
+  const t = (f.type || '') + ' ' + (f.name || '');
+  if (attIsImage(f)) return '🖼️';
+  if (/pdf/i.test(t)) return '📄';
+  if (/zip|rar|7z|tar/i.test(t)) return '🗜️';
+  if (/word|msword|\.docx?$/i.test(t)) return '📝';
+  if (/sheet|excel|csv|\.xlsx?$/i.test(t)) return '📊';
+  if (/calendar|\.ics$/i.test(t)) return '🗓️';
+  return '📎';
+}
+
+function attFileUrl(path) {
+  return 'https://api.github.com/repos/' + ghCfg.repo + '/contents/' +
+         String(path).replace(/^\/+/, '');
+}
+
+/* Repo paths allow a narrow character set; keep the name recognisable. */
+function attPathFor(name) {
+  const safe = String(name).replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+/, '').slice(-60) || 'file';
+  return 'files/' + uid() + '-' + safe;
+}
+
+function attItem(dayId, itemId) {
+  const day = dayById(dayId);
+  if (!day) return null;
+  const it = day.items.filter(function (x) { return x.id === itemId; })[0];
+  return it || null;
+}
+
+function attPick(dayId, itemId) {
+  if (!ghCfg) {
+    toast('Connect sync first — attachments live in your private repo (Notes tab).', true);
+    showPanel('notes');
+    return;
+  }
+  attTarget = { dayId: dayId, itemId: itemId };
+  byId('att-file').value = '';
+  byId('att-file').click();
+}
+
+function attUpload(file) {
+  if (!attTarget || !ghCfg || !file) return;
+  const it = attItem(attTarget.dayId, attTarget.itemId);
+  if (!it) return;
+  if (file.size > ATT_MAX) {
+    toast('“' + file.name + '” is ' + fmtBytes(file.size) + '. The limit is ' +
+          fmtBytes(ATT_MAX) + ' — try a smaller photo or a PDF.', true);
+    return;
+  }
+  const path = attPathFor(file.name);
+  const target = attTarget;
+  toast('Uploading ' + file.name + '…');
+  const reader = new FileReader();
+  reader.onerror = function () { toast('Could not read that file.', true); };
+  reader.onload = function () {
+    const b64 = String(reader.result).split(',')[1] || '';
+    fetch(attFileUrl(path), {
+      method: 'PUT', headers: ghHeaders(),
+      body: JSON.stringify({ message: 'Attach ' + file.name, content: b64, branch: ghCfg.branch || 'main' })
+    }).then(function (r) {
+      if (r.status === 401 || r.status === 403) throw new Error('auth');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (d) {
+      const live = attItem(target.dayId, target.itemId);
+      if (!live) return;
+      live.files = live.files || [];
+      live.files.push({ id: uid(), name: file.name, size: file.size, type: file.type || '',
+                        path: path, sha: (d.content && d.content.sha) || '' });
+      save();
+      renderSchedule(); renderFocus();
+      toast('Attached ' + file.name + '.');
+    }).catch(function (e) {
+      toast(String(e && e.message) === 'auth'
+        ? 'GitHub refused the upload — check the token still has Contents: Read and write.'
+        : 'Upload failed. Your trip is unchanged; try again.', true);
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+/* Fetch once per session, then reuse the object URL. */
+function attFetch(f) {
+  if (attBlob[f.id]) return Promise.resolve(attBlob[f.id]);
+  if (!ghCfg) return Promise.reject(new Error('nosync'));
+  return fetch(attFileUrl(f.path) + '?ref=' + encodeURIComponent(ghCfg.branch || 'main'),
+               { headers: ghHeaders() })
+    .then(function (r) {
+      if (r.status === 404) throw new Error('gone');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function (d) {
+      const bin = atob(String(d.content || '').replace(/\s/g, ''));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: f.type || 'application/octet-stream' }));
+      attBlob[f.id] = url;
+      return url;
+    });
+}
+
+function attOpen(dayId, itemId, fileId) {
+  const it = attItem(dayId, itemId);
+  if (!it) return;
+  const f = (it.files || []).filter(function (x) { return x.id === fileId; })[0];
+  if (!f) return;
+
+  /* A photo is worth seeing in place; anything else is handed over as a
+     file, which is what a ticket or a programme is for. */
+  if (attIsImage(f)) {
+    if (attShown[f.id]) { delete attShown[f.id]; renderSchedule(); return; }
+    toast('Loading ' + f.name + '…');
+    attFetch(f).then(function () {
+      attShown[f.id] = true;
+      renderSchedule();
+    }, function (e) { attError(e); });
+    return;
+  }
+
+  toast('Fetching ' + f.name + '…');
+  attFetch(f).then(function (url) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = f.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, function (e) { attError(e); });
+}
+
+function attError(e) {
+  const m = String((e && e.message) || e);
+  toast(m === 'gone' ? 'That file is no longer in the repo.'
+      : m === 'nosync' ? 'Connect sync to open attachments.'
+      : 'Could not fetch that file — check your connection.', true);
+}
+
+function attRemove(dayId, itemId, fileId) {
+  const it = attItem(dayId, itemId);
+  if (!it) return;
+  const f = (it.files || []).filter(function (x) { return x.id === fileId; })[0];
+  if (!f) return;
+  if (!window.confirm('Remove “' + f.name + '” from this stop?\n\nIt is deleted from the repository too.')) return;
+
+  /* Drop the reference first: the stop should not keep pointing at a file
+     the user has already decided to remove, even if GitHub is unreachable. */
+  it.files = it.files.filter(function (x) { return x.id !== fileId; });
+  delete attShown[fileId];
+  if (attBlob[fileId]) { URL.revokeObjectURL(attBlob[fileId]); delete attBlob[fileId]; }
+  save();
+  renderSchedule(); renderFocus();
+
+  if (ghCfg && f.sha) {
+    fetch(attFileUrl(f.path), {
+      method: 'DELETE', headers: ghHeaders(),
+      body: JSON.stringify({ message: 'Remove ' + f.name, sha: f.sha, branch: ghCfg.branch || 'main' })
+    }).catch(function () { /* the reference is gone; an orphan blob is harmless */ });
+  }
+}
+
+function attListHtml(day, it) {
+  const files = it.files || [];
+  let h = '<div class="att-row">' +
+    '<button class="btn btn-sm" data-act="att-add" data-day="' + day.id + '" data-id="' + it.id + '" title="' +
+    (ghCfg ? 'Attach a ticket, photo or document' : 'Connect sync first to attach files') + '">📎 Attach</button>';
+  files.forEach(function (f) {
+    h += '<span class="att">' +
+           '<button class="att-name" data-act="att-open" data-day="' + day.id + '" data-id="' + it.id +
+             '" data-file="' + f.id + '" title="' + (attIsImage(f) ? 'Show or hide this photo' : 'Download this file') + '">' +
+             attIcon(f) + ' ' + esc(f.name) + '</button>' +
+           (f.size ? '<span class="att-size">' + fmtBytes(f.size) + '</span>' : '') +
+           '<button class="att-x" data-act="att-del" data-day="' + day.id + '" data-id="' + it.id +
+             '" data-file="' + f.id + '" title="Remove">✕</button>' +
+         '</span>';
+  });
+  h += '</div>';
+  files.forEach(function (f) {
+    if (attShown[f.id] && attBlob[f.id]) {
+      h += '<img class="att-preview" src="' + attBlob[f.id] + '" alt="' + esc(f.name) + '">';
+    }
+  });
+  return h;
+}
+
 /* ─── 7. IO ─────────────────────────────────────────────────────── */
+
+/* Swap in a whole library of trips. */
+function adoptDoc(doc) {
+  DOC = doc;
+  adoptState(openTrip(DOC.activeTripId));
+}
 
 /* Swap in a whole trip and put every bound control back in step. */
 function adoptState(next) {
@@ -2863,6 +3455,202 @@ function adoptState(next) {
   showPanel(S.activePanel);
   renderAll();
   fitCity();
+}
+
+/* ─── 7d. TRIPS AND CITIES ──────────────────────────────────────── */
+
+function tripList() {
+  return DOC.tripOrder.map(function (k) { return DOC.trips[k]; });
+}
+
+function switchTrip(id) {
+  if (!DOC.trips[id] || id === DOC.activeTripId) return;
+  adoptState(openTrip(id));
+  saveUi();
+  renderTrip();
+  toast('Opened “' + S.tripName + '”.');
+}
+
+/* A trip must always have at least one city — too much of the app reads
+   the active city for an empty trip to be a safe state — so creating one
+   asks where it starts. */
+function newTrip() {
+  const name = byId('trip-new-name').value.trim();
+  const where = byId('trip-new-city').value.trim();
+  const st = byId('trip-status');
+  st.classList.remove('err');
+  if (!name) { st.textContent = 'Give the trip a name.'; st.classList.add('err'); return; }
+  if (!where) { st.textContent = 'Name the first city so the trip has somewhere to start.'; st.classList.add('err'); return; }
+  st.textContent = 'Looking up ' + where + '…';
+  geocode(where, true).then(function (list) {
+    if (!list.length) { st.textContent = 'Could not find “' + where + '”. Try a bigger nearby city.'; st.classList.add('err'); return; }
+    const r = list[0];
+    const trip = defaultStateShape();
+    trip.id = uid();
+    trip.tripName = name;
+    trip.cities = {}; trip.cityOrder = [];
+    const key = addCityRecord(trip, r);
+    trip.activeCity = key;
+    trip.updatedAt = Date.now();
+    DOC.trips[trip.id] = trip;
+    DOC.tripOrder.push(trip.id);
+    byId('trip-new-name').value = '';
+    byId('trip-new-city').value = '';
+    adoptState(openTrip(trip.id));
+    save();
+    renderTrip();
+    toast('Created “' + name + '”, starting in ' + CITY(key).name + '.');
+  }, function () {
+    st.textContent = 'Address lookup needs the web — try again when you are online.';
+    st.classList.add('err');
+  });
+}
+
+function duplicateTrip() {
+  const copy = normalize(JSON.parse(JSON.stringify(S)));
+  copy.id = uid();
+  copy.tripName = S.tripName + ' (copy)';
+  copy.updatedAt = Date.now();
+  DOC.trips[copy.id] = copy;
+  DOC.tripOrder.push(copy.id);
+  adoptState(openTrip(copy.id));
+  save();
+  renderTrip();
+  toast('Duplicated as “' + copy.tripName + '”.');
+}
+
+function deleteTrip() {
+  if (DOC.tripOrder.length < 2) {
+    byId('trip-status').textContent = 'This is the only trip — create another before deleting it.';
+    byId('trip-status').classList.add('err');
+    return;
+  }
+  if (!window.confirm('Delete “' + S.tripName + '” and everything in it?\n\nIts places, schedule and notes go too. Attached files stay in the repository.')) return;
+  const gone = S.tripName, id = DOC.activeTripId;
+  delete DOC.trips[id];
+  DOC.tripOrder = DOC.tripOrder.filter(function (k) { return k !== id; });
+  adoptState(openTrip(DOC.tripOrder[0]));
+  save();
+  renderTrip();
+  toast('Deleted “' + gone + '”.');
+}
+
+/* Build a city from a geocoder result and attach it to a trip. */
+function addCityRecord(trip, r) {
+  const parts = String(r.display_name || '').split(',');
+  const key = 'c' + uid();
+  const city = makeCity({
+    name: (parts[0] || 'City').trim(),
+    country: (parts[parts.length - 1] || '').trim(),
+    flag: '🏙',
+    center: [parseFloat(r.lat), parseFloat(r.lon)],
+    zoom: 12
+  });
+  trip.cities[key] = city;
+  trip.cityOrder.push(key);
+  return key;
+}
+
+function addCityFromResult(r) {
+  const key = addCityRecord(S, r);
+  save();
+  byId('city-new').value = '';
+  byId('city-results').classList.add('hidden');
+  byId('city-status').textContent = 'Added ' + CITY(key).name + '.';
+  setCity(key);
+  renderTrip();
+  toast('Added ' + CITY(key).name + ' to this trip.');
+}
+
+function moveCity(key, dir) {
+  const i = S.cityOrder.indexOf(key), j = i + dir;
+  if (i < 0 || j < 0 || j >= S.cityOrder.length) return;
+  const t = S.cityOrder[i]; S.cityOrder[i] = S.cityOrder[j]; S.cityOrder[j] = t;
+  save();
+  renderAll();
+  renderTrip();
+}
+
+function removeCity(key) {
+  if (S.cityOrder.length < 2) {
+    byId('city-status').textContent = 'A trip needs at least one city. Add another before removing this one.';
+    byId('city-status').classList.add('err');
+    return;
+  }
+  const c = CITY(key);
+  const days = S.days.filter(function (d) { return d.city === key; });
+  const pins = c.pins.length;
+  if (!window.confirm('Remove ' + c.name + ' from this trip?\n\n' + pins + ' place(s) are deleted. ' +
+      days.length + ' day(s) move to the next city, keeping their stops.')) return;
+
+  const fallback = S.cityOrder.filter(function (k) { return k !== key; })[0];
+  const goneIds = c.pins.map(function (p) { return p.id; });
+  /* A stop pointing at a deleted place keeps its name as text rather than
+     vanishing — the plan is more valuable than the link. */
+  S.days.forEach(function (d) {
+    if (d.city === key) d.city = fallback;
+    d.items.forEach(function (it) {
+      if (goneIds.indexOf(it.pinId) >= 0) {
+        const p = c.pins.filter(function (x) { return x.id === it.pinId; })[0];
+        it.place = p ? p.name : it.place;
+        it.pinId = null;
+      }
+    });
+  });
+  delete S.cities[key];
+  S.cityOrder = S.cityOrder.filter(function (k) { return k !== key; });
+  if (S.activeCity === key) S.activeCity = fallback;
+  save();
+  setCity(S.activeCity);
+  renderTrip();
+  toast('Removed ' + c.name + '.');
+}
+
+function findCity() {
+  const q = byId('city-new').value.trim();
+  const box = byId('city-results'), st = byId('city-status');
+  st.classList.remove('err');
+  st.textContent = '';
+  if (q.length < 2) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  box.innerHTML = '<div class="search-item">Searching\u2026</div>';
+  geocode(q, true).then(function (list) {
+    if (!list.length) { box.innerHTML = '<div class="search-item">No match. Try a larger town nearby.</div>'; return; }
+    box.innerHTML = list.map(function (r) {
+      const parts = String(r.display_name || '').split(',');
+      return '<div class="search-item" data-act="city-pick" data-lat="' + parseFloat(r.lat) +
+             '" data-lng="' + parseFloat(r.lon) + '" data-full="' + esc(r.display_name) + '">' +
+             '<div>' + esc(parts[0].trim()) + '</div>' +
+             '<div class="si-sub">' + esc(parts.slice(1, 4).join(',').trim()) + '</div></div>';
+    }).join('');
+  }, function () {
+    box.innerHTML = '<div class="search-item">City lookup needs the web.</div>';
+  });
+}
+
+function renderTrip() {
+  if (!byId('trip-select')) return;
+  byId('trip-select').innerHTML = tripList().map(function (t) {
+    return '<option value="' + t.id + '"' + (t.id === DOC.activeTripId ? ' selected' : '') + '>' +
+           esc(t.tripName) + ' · ' + t.cityOrder.length + (t.cityOrder.length === 1 ? ' city' : ' cities') +
+           ' · ' + t.days.length + (t.days.length === 1 ? ' day' : ' days') + '</option>';
+  }).join('');
+  byId('trip-count').textContent = DOC.tripOrder.length + (DOC.tripOrder.length === 1 ? ' trip' : ' trips');
+  byId('badge-trip').textContent = DOC.tripOrder.length;
+
+  byId('city-list').innerHTML = S.cityOrder.map(function (k, i) {
+    const c = S.cities[k];
+    const days = S.days.filter(function (d) { return d.city === k; }).length;
+    return '<div class="city-row">' +
+      '<input class="inp city-flag" value="' + esc(c.flag) + '" data-act="city-field" data-city="' + k + '" data-field="flag" title="Any emoji">' +
+      '<input class="inp" value="' + esc(c.name) + '" data-act="city-field" data-city="' + k + '" data-field="name">' +
+      '<input class="inp city-cur" value="' + esc(c.currency) + '" data-act="city-field" data-city="' + k + '" data-field="currency" title="Currency symbol">' +
+      '<span class="card-note city-counts">' + c.pins.length + ' 📍 · ' + days + ' 🗓</span>' +
+      '<button class="btn btn-icon" data-act="city-up" data-city="' + k + '" title="Move earlier"' + (i === 0 ? ' disabled' : '') + '>▲</button>' +
+      '<button class="btn btn-icon" data-act="city-down" data-city="' + k + '" title="Move later"' + (i === S.cityOrder.length - 1 ? ' disabled' : '') + '>▼</button>' +
+      '<button class="btn btn-icon btn-danger" data-act="city-del" data-city="' + k + '" title="Remove from this trip">🗑</button>' +
+      '</div>';
+  }).join('');
 }
 
 function exportJSON() {
@@ -2888,8 +3676,8 @@ function importJSON(file) {
       toast('That file is not valid JSON.', true);
       return;
     }
-    const pinCount = CITY_ORDER.reduce(function (n, k) {
-      return n + (((parsed.cities || {})[k] || {}).pins || []).length;
+    const pinCount = Object.keys(parsed.cities || {}).reduce(function (n, k) {
+      return n + ((parsed.cities[k] || {}).pins || []).length;
     }, 0);
     const dayCount = (parsed.days || []).length;
     if (!window.confirm('Replace everything currently in this organizer with the imported file?\n\n' +
@@ -2921,8 +3709,8 @@ function itineraryText() {
   const days = S.days.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
   days.forEach(function (day) {
     const c = dayComputed(day);
-    const cur = CITIES[day.city].currency;
-    out.push('── ' + weekday(day.date) + ' ' + fmtDate(day.date) + ' · ' + CITIES[day.city].name +
+    const cur = CITY(day.city).currency;
+    out.push('── ' + weekday(day.date) + ' ' + fmtDate(day.date) + ' · ' + CITY(day.city).name +
              (day.title ? ' · ' + day.title : ''));
     c.rows.forEach(function (r, i) {
       if (i > 0 && r.leg && !r.leg.zero) {
@@ -2941,10 +3729,10 @@ function itineraryText() {
     out.push('');
   });
 
-  CITY_ORDER.forEach(function (k) {
+  S.cityOrder.forEach(function (k) {
     const city = S.cities[k];
     if (!city.pins.length && !city.notes) return;
-    out.push('── ' + CITIES[k].name.toUpperCase() + ' — PLACES');
+    out.push('── ' + CITY(k).name.toUpperCase() + ' — PLACES');
     CAT_ORDER.forEach(function (cat) {
       city.pins.filter(function (p) { return p.cat === cat; }).forEach(function (p) {
         out.push('  ' + CATS[cat].icon + ' ' + p.name + (city.baseId === p.id ? '  [BASE]' : '') +
@@ -3007,12 +3795,12 @@ function toast(msg, isErr) {
 /* ─── 8. ORCHESTRATION ──────────────────────────────────────────── */
 
 function renderCityTabs() {
-  byId('city-tabs').innerHTML = CITY_ORDER.map(function (k) {
+  byId('city-tabs').innerHTML = S.cityOrder.map(function (k) {
     const pins = S.cities[k].pins.length;
     const days = S.days.filter(function (d) { return d.city === k; }).length;
     return '<button class="city-tab' + (k === S.activeCity ? ' active' : '') + '" data-act="city" data-city="' + k + '">' +
-           '<span class="flag">' + CITIES[k].flag + '</span>' +
-           '<span>' + esc(CITIES[k].name) + '</span>' +
+           '<span class="flag">' + CITY(k).flag + '</span>' +
+           '<span>' + esc(CITY(k).name) + '</span>' +
            '<span class="cnt">' + pins + ' 📍 · ' + days + ' 🗓</span></button>';
   }).join('');
 }
@@ -3026,12 +3814,13 @@ function renderAll() {
   renderSchedule();
   renderNotes();
   renderFocus();
+  renderTrip();
   drawMap();
 }
 
 function showPanel(id) {
   S.activePanel = id;
-  ['pins', 'travel', 'schedule', 'notes'].forEach(function (p) {
+  ['pins', 'travel', 'schedule', 'notes', 'trip'].forEach(function (p) {
     byId('panel-' + p).classList.toggle('hidden', p !== id);
   });
   Array.prototype.forEach.call(document.querySelectorAll('.panel-tab'), function (b) {
@@ -3041,7 +3830,7 @@ function showPanel(id) {
 }
 
 function setCity(key) {
-  if (!CITIES[key]) return;
+  if (!CITY(key)) return;
   S.activeCity = key;
   tvFrom = '__base'; tvTo = '';
   clearNav();
@@ -3051,7 +3840,7 @@ function setCity(key) {
   byId('pin-filter').value = '';
   byId('map-search').value = '';
   byId('search-results').classList.add('hidden');
-  if (mapOK()) map.setView(CITIES[key].center, CITIES[key].zoom);
+  if (mapOK()) map.setView(CITY(key).center, CITY(key).zoom);
   saveUi();
   renderAll();
   fitCity();
@@ -3068,6 +3857,9 @@ document.addEventListener('click', function (ev) {
   const id = t.getAttribute('data-id');
   const dayId = t.getAttribute('data-day');
 
+  /* Anything done inside a day card is work on that day. */
+  if (dayId) touchDay(dayId);
+
   switch (act) {
     case 'city':
       setCity(t.getAttribute('data-city'));
@@ -3080,6 +3872,10 @@ document.addEventListener('click', function (ev) {
       saveUi(); renderCatChips(); renderPins(); drawMap();
       break;
     }
+
+    case 'att-add': attPick(dayId, id); break;
+    case 'att-open': attOpen(dayId, id, t.getAttribute('data-file')); break;
+    case 'att-del': attRemove(dayId, id, t.getAttribute('data-file')); break;
 
     case 'route-mode': requestRoute(t.getAttribute('data-mode')); break;
     case 'leg-route': showLegOnMap(dayId, id); break;
@@ -3115,11 +3911,61 @@ document.addEventListener('click', function (ev) {
       byId('search-results').classList.add('hidden');
       byId('pf-geo-results').classList.add('hidden');
       byId('map-search').value = '';
-      byId('pf-geo-status').textContent = 'Found — check the name and category, then save.';
+      {
+        /* Saving files the place under the selected city. If the result is
+           somewhere else, say so before it becomes a Paris pin sitting in
+           Barcelona. */
+        const near = nearestCity(lat, lng);
+        const st = byId('pf-geo-status');
+        st.classList.remove('err');
+        if (near.key !== S.activeCity && near.km < 60) {
+          st.innerHTML = 'That is in <b>' + esc(CITY(near.key).name) + '</b>. Saving now files it under ' +
+            esc(CITY(S.activeCity).name) + '. ' +
+            '<button class="btn btn-sm" data-act="geo-switch" data-city="' + near.key +
+            '">Save under ' + esc(CITY(near.key).name) + ' instead</button>';
+        } else if (near.km >= 60) {
+          st.textContent = 'That is a long way from all three cities — it will be saved under ' +
+            CITY(S.activeCity).name + ', and distances are measured from there.';
+        } else {
+          st.textContent = 'Found — check the name and category, then save.';
+        }
+      }
       setDraft([lat, lng]);
       if (mapOK()) map.setView([lat, lng], 16);
       showPanel('pins');
       byId('pf-coord-hint').innerHTML = 'Found <b>' + lat.toFixed(5) + ', ' + lng.toFixed(5) + '</b> — check the category and save.';
+      break;
+    }
+
+    case 'city-pick':
+      addCityFromResult({ lat: t.getAttribute('data-lat'), lon: t.getAttribute('data-lng'),
+                          display_name: t.getAttribute('data-full') });
+      break;
+    case 'city-up': moveCity(t.getAttribute('data-city'), -1); break;
+    case 'city-down': moveCity(t.getAttribute('data-city'), 1); break;
+    case 'city-del': removeCity(t.getAttribute('data-city')); break;
+
+    case 'geo-switch': {
+      /* setCity resets the form, so carry the half-entered place across. */
+      const keep = {
+        name: byId('pf-name').value, cat: byId('pf-cat').value,
+        lat: byId('pf-lat').value, lng: byId('pf-lng').value,
+        addr: byId('pf-addr').value, notes: byId('pf-notes').value
+      };
+      setCity(t.getAttribute('data-city'));
+      byId('pf-name').value = keep.name;
+      byId('pf-cat').value = keep.cat;
+      byId('pf-lat').value = keep.lat;
+      byId('pf-lng').value = keep.lng;
+      byId('pf-addr').value = keep.addr;
+      byId('pf-notes').value = keep.notes;
+      const la = parseFloat(keep.lat), lo = parseFloat(keep.lng);
+      if (isFinite(la) && isFinite(lo)) {
+        setDraft([la, lo]);
+        if (mapOK()) map.setView([la, lo], 15);
+      }
+      showPanel('pins');
+      byId('pf-geo-status').textContent = 'Now saving under ' + CITY(S.activeCity).name + '.';
       break;
     }
 
@@ -3202,6 +4048,18 @@ document.addEventListener('change', function (ev) {
   const id = t.getAttribute('data-id');
   const dayId = t.getAttribute('data-day');
 
+  if (act === 'city-field') {
+    const c = S.cities[t.getAttribute('data-city')];
+    if (!c) return;
+    const f = t.getAttribute('data-field'), v = t.value.trim();
+    if (f === 'name') c.name = v || c.name;
+    else if (f === 'flag') c.flag = v || '🏙';
+    else if (f === 'currency') c.currency = v || '€';
+    save();
+    renderAll();
+    return;
+  }
+
   if (act === 'set-tiles') {
     S.tiles = providerBy(t.value).key;
     saveUi();
@@ -3214,7 +4072,7 @@ document.addEventListener('change', function (ev) {
   if (act === 'set-mode') {
     const v = parseFloat(t.value);
     const mode = t.getAttribute('data-mode'), field = t.getAttribute('data-field');
-    settingsFor()[mode][field] = isFinite(v) && v >= 0 ? v : CITIES[S.activeCity].defaults[mode][field];
+    settingsFor()[mode][field] = isFinite(v) && v >= 0 ? v : CITY(S.activeCity).defaults[mode][field];
     t.value = settingsFor()[mode][field];
     save(); renderTravel(); renderSchedule(); renderFocus(); renderPins();
     return;
@@ -3231,25 +4089,22 @@ document.addEventListener('change', function (ev) {
   if (act === 'day-city') {
     if (!day) return;
     const next = t.value;
-    if (!CITIES[next] || next === day.city) return;
-    /* Pins belong to a city. Keep the stop readable by demoting it to text. */
+    if (!CITY(next) || next === day.city) return;
+    /* Stops survive intact now: they reference places directly, so moving
+       a day to another city no longer orphans them. The day's city only
+       decides which fares price its legs and which city it files under. */
     let moved = 0;
-    day.items.forEach(function (it) {
-      if (it.pinId) {
-        const p = pinById(day.city, it.pinId);
-        if (p) { it.place = p.name; moved++; }
-        it.pinId = null;
-      }
-    });
     day.city = next;
     save();
     /* Follow the day to its new city: the list is scoped by city, so
        staying put would make the day you just edited disappear, and its
        stops can only be relinked to places of the city it now belongs to. */
     if (next !== S.activeCity) setCity(next); else renderAll();
-    if (moved) toast(moved + ' stop(s) kept their name as text — relink them to ' + CITIES[next].name + ' places.');
+    if (moved) toast(moved + ' stop(s) moved.');
     return;
   }
+
+  if (day) touchDay(day.id);
 
   /* Free text was already stored on `input`. On blur, refresh the right
      column so the always-visible focused day is never stale — but do NOT
@@ -3345,9 +4200,9 @@ function wire() {
     const a = tvFrom; tvFrom = tvTo; tvTo = a; clearNav(); renderTravel();
   });
   byId('btn-settings-reset').addEventListener('click', function () {
-    S.cities[S.activeCity].settings = clone(CITIES[S.activeCity].defaults);
+    S.cities[S.activeCity].settings = clone(CITY(S.activeCity).defaults);
     save(); renderAll();
-    toast(CITIES[S.activeCity].name + ' estimator reset to defaults.');
+    toast(CITY(S.activeCity).name + ' estimator reset to defaults.');
   });
 
   byId('btn-day-add').addEventListener('click', addDay);
@@ -3388,6 +4243,26 @@ function wire() {
   });
   document.addEventListener('click', function (e) {
     if (!e.target.closest('.search-wrap')) byId('search-results').classList.add('hidden');
+  });
+
+  document.addEventListener('visibilitychange', ghMaybePull);
+  window.addEventListener('focus', ghMaybePull);
+
+  byId('att-file').addEventListener('change', function () {
+    if (this.files && this.files[0]) attUpload(this.files[0]);
+    this.value = '';
+  });
+
+  byId('trip-select').addEventListener('change', function () { switchTrip(this.value); });
+  byId('btn-trip-new').addEventListener('click', newTrip);
+  byId('btn-trip-dup').addEventListener('click', duplicateTrip);
+  byId('btn-trip-del').addEventListener('click', deleteTrip);
+  byId('trip-new-city').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); newTrip(); }
+  });
+  byId('btn-city-find').addEventListener('click', findCity);
+  byId('city-new').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); findCity(); }
   });
 
   byId('btn-gh-connect').addEventListener('click', ghConnect);
