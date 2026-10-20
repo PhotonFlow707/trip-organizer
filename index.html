@@ -91,6 +91,8 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 }
 .trip-name:hover { border-color: var(--border); background: var(--bg-hover); }
 .trip-name:focus { outline: none; border-color: var(--border-active); background: var(--bg-sunken); width: 24ch; }
+.hdr-trip { display: flex; align-items: center; gap: var(--sp-sm); }
+.hdr-trip .inp { width: auto; max-width: 240px; font-weight: 600; font-size: .8rem; padding: 7px 26px 7px 10px; }
 .hdr-sub { font-size: .66rem; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; padding-left: 7px; }
 
 .city-tabs { display: flex; gap: var(--sp-xs); flex-wrap: wrap; }
@@ -168,7 +170,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 .spacer { margin-left: auto; }
 
 /* ── Panel tabs ───────────────────────────────────────────────── */
-.panel-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--sp-xs); margin-bottom: var(--sp-md); }
+.panel-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-xs); margin-bottom: var(--sp-md); }
 .panel-tab {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   padding: 9px 4px; border-radius: var(--radius-md); cursor: pointer;
@@ -413,6 +415,10 @@ tr.routing td { opacity: .65; }
 .fl-lines { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; margin: 2px 0 1px; }
 .line-chip.sm { min-width: 18px; padding: 1px 5px; font-size: .62rem; border-radius: 5px; }
 .fl-pending { opacity: .5; font-size: .58rem; letter-spacing: .04em; }
+.num-btn { border: 0; cursor: pointer; font-family: inherit; }
+.num-btn:hover { background: var(--emerald); }
+.leg-bar.clickable { cursor: pointer; border-radius: 8px; transition: background .14s var(--ease); }
+.leg-bar.clickable:hover { background: var(--bg-hover); }
 .num-badge {
   display: inline-flex; align-items: center; justify-content: center;
   width: 17px; height: 17px; border-radius: 50%; flex: none;
@@ -506,7 +512,26 @@ details.box > summary:hover { color: var(--text-1); }
   .hdr-actions { order: 4; width: 100%; }
   .hdr-actions .btn { flex: 1; justify-content: center; padding: 10px 8px; }
 
-  #map { height: 44vh; }
+  /* The map stays put while the schedule scrolls under it — the same
+     relationship the desktop two-column layout gives you. A single-column
+     GRID gives each item its own row, so a sticky item has nothing to
+     stick within; a flex column makes the whole layout the container.
+     The header is three wrapped rows on a phone, so it scrolls away
+     rather than stealing height from the map and the schedule. */
+  .app-header { position: static; }
+  .layout { display: flex; flex-direction: column; gap: var(--sp-sm); }
+  .col-right {
+    order: -1;
+    position: sticky;
+    top: 0;
+    z-index: 600;
+    background: var(--bg-base);
+  }
+  #map { height: 34vh; }
+  .map-card .card-head { padding: 8px var(--sp-md); }
+  /* The rail repeats the schedule you are already reading. */
+  #focus-card { display: none; }
+
   .map-foot { padding: 10px var(--sp-md); }
   .panel-tab { padding: 11px 4px; }
 
@@ -543,6 +568,9 @@ details.box > summary:hover { color: var(--text-1); }
       <input id="trip-name" class="trip-name" value="My Trip" aria-label="Trip name">
       <div class="hdr-sub" id="hdr-sync">Trip Organizer</div>
     </div>
+    <div class="hdr-trip">
+      <select class="inp" id="hdr-trip-select" title="Switch trip"></select>
+    </div>
   </div>
 
   <nav class="city-tabs" id="city-tabs"></nav>
@@ -562,10 +590,9 @@ details.box > summary:hover { color: var(--text-1); }
   <!-- ── Left column: the four working panels ──────────────────── -->
   <section class="col-left">
     <nav class="panel-tabs" id="panel-tabs">
-      <button class="panel-tab" data-panel="pins"><span class="ico">📍</span><span>Places</span><span class="badge" id="badge-pins">0</span></button>
-      <button class="panel-tab" data-panel="travel"><span class="ico">🚆</span><span>Travel</span><span class="badge" id="badge-travel">5 modes</span></button>
       <button class="panel-tab" data-panel="schedule"><span class="ico">🗓️</span><span>Schedule</span><span class="badge" id="badge-schedule">0 days</span></button>
-      <button class="panel-tab" data-panel="notes"><span class="ico">📝</span><span>Notes</span><span class="badge" id="badge-notes">—</span></button>
+      <button class="panel-tab" data-panel="travel"><span class="ico">🚆</span><span>Travel</span><span class="badge" id="badge-travel">5 modes</span></button>
+      <button class="panel-tab" data-panel="pins"><span class="ico">📍</span><span>Places</span><span class="badge" id="badge-pins">0</span></button>
       <button class="panel-tab" data-panel="trip"><span class="ico">🧭</span><span>Trip</span><span class="badge" id="badge-trip">1</span></button>
     </nav>
 
@@ -752,40 +779,14 @@ details.box > summary:hover { color: var(--text-1); }
       </div>
 
       <div class="card">
-        <div class="card-head"><span class="card-title">Cities in this trip</span></div>
-        <div class="card-body">
-          <div class="field">
-            <label for="city-new">Add a city</label>
-            <div class="geo-row">
-              <input class="inp" id="city-new" placeholder="Lisbon" autocomplete="off">
-              <button class="btn" id="btn-city-find">🔍 Find</button>
-            </div>
-            <div class="search-results hidden" id="city-results"></div>
-            <div class="status" id="city-status"></div>
-          </div>
-          <div id="city-list"></div>
-          <div class="card-note">
-            The name, flag and currency are yours to edit. Speeds and fares for each city live in
-            <b>Travel → Estimator settings</b> and start from a middling European profile.
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Notes -------------------------------------------------- -->
-    <div class="panel hidden" id="panel-notes">
-      <div class="card">
         <div class="card-head"><span class="card-title">Trip notes</span></div>
         <div class="card-body">
-          <textarea class="inp" id="nt-trip" style="min-height:130px" placeholder="Flight numbers, passport details, who to call, budget…"></textarea>
+          <textarea class="inp" id="nt-trip" style="min-height:110px"
+            placeholder="Flight numbers, passport details, who to call, budget\u2026"></textarea>
+          <div class="card-note">Notes for a single stop belong on that stop, in the Schedule.</div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-head"><span class="card-title"><span id="nt-city-name">Paris</span> notes</span></div>
-        <div class="card-body">
-          <textarea class="inp" id="nt-city" style="min-height:130px" placeholder="Transit pass to buy, neighbourhood to avoid after dark, market days…"></textarea>
-        </div>
-      </div>
+
       <div class="card">
         <div class="card-head">
           <span class="card-title">Sync across devices</span>
@@ -831,10 +832,26 @@ details.box > summary:hover { color: var(--text-1); }
       </div>
 
       <div class="card">
-        <div class="card-head"><span class="card-title">At a glance</span></div>
-        <div class="card-body" id="nt-glance"></div>
+        <div class="card-head"><span class="card-title">Cities in this trip</span></div>
+        <div class="card-body">
+          <div class="field">
+            <label for="city-new">Add a city</label>
+            <div class="geo-row">
+              <input class="inp" id="city-new" placeholder="Lisbon" autocomplete="off">
+              <button class="btn" id="btn-city-find">🔍 Find</button>
+            </div>
+            <div class="search-results hidden" id="city-results"></div>
+            <div class="status" id="city-status"></div>
+          </div>
+          <div id="city-list"></div>
+          <div class="card-note">
+            The name, flag and currency are yours to edit. Speeds and fares for each city live in
+            <b>Travel → Estimator settings</b> and start from a middling European profile.
+          </div>
+        </div>
       </div>
     </div>
+
   </section>
 
   <!-- ── Right column: map + the focused day ───────────────────── -->
@@ -857,7 +874,7 @@ details.box > summary:hover { color: var(--text-1); }
       <div class="map-foot" id="map-legend"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="focus-card">
       <div class="card-head">
         <span class="card-title">Focused day</span>
         <span class="spacer"></span>
@@ -870,37 +887,7 @@ details.box > summary:hover { color: var(--text-1); }
 </main>
 <input type="file" id="att-file" hidden>
 
-<footer class="app-footer">
-  <div class="card">
-    <div class="card-head"><span class="card-title">How this works</span></div>
-    <div class="card-body">
-      <div>
-        <b>Everything is stored in this browser</b> under <code>tripOrganizer.v1</code>. That survives a reload and
-        works from a <code>file://</code> page, but it is per-browser-profile and is wiped by "clear browsing data" —
-        so <b>Export</b> is the durable copy, not a nicety.
-      </div>
-      <div>
-        <b>Travel times are modelled, not routed.</b> There is no directions API behind this page. Each leg is
-        great-circle distance × a per-mode detour factor ÷ a per-mode speed, plus a fixed wait/boarding overhead;
-        fares are base + per&nbsp;km. Every coefficient is editable per city under <b>Travel → Estimator settings</b>.
-        Expect the right ballpark for planning, and confirm anything time-critical with RATP / Stan / TMB or a
-        live journey planner.
-      </div>
-      <div>
-        <b>Seeded landmark coordinates are approximate</b> centroids for well-known sites, good to roughly a block.
-        Your hotel, restaurants and bookings are yours to add — click the map, or search an address.
-      </div>
-      <div>
-        <b>If the map fills with "Access blocked" or "API key required" tiles, change the Basemap</b> dropdown
-        under the map. Tile hosts refuse traffic for their own reasons and some do it with a valid image rather
-        than an error, so the page checks for that and tells you. Map data ©
-        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
-        contributors; tiles as credited in the map's corner; address search by Nominatim. Tiles and search need
-        network access — the rest of the page, including every distance, time and schedule, works offline.
-      </div>
-    </div>
-  </div>
-</footer>
+
 
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -1125,7 +1112,7 @@ function blankCity(key) {
 }
 
 function defaultState() {
-  const st = { v: 1, tripName: 'My Trip', activeCity: 'paris', activePanel: 'pins',
+  const st = { v: 1, tripName: 'My Trip', activeCity: 'paris', activePanel: 'schedule',
                focusDayId: null, notes: '', cities: {}, cityOrder: [], days: [], catFilter: [], tiles: 'esriDark', schedFilter: 'city', schedDate: todayISO(), updatedAt: 0 };
   SEED_ORDER.forEach(function (k) {
     st.cities[k] = makeCity(SEED_CITIES[k]);
@@ -1158,7 +1145,7 @@ function normalize(raw) {
 
   st.tripName  = typeof raw.tripName === 'string' ? raw.tripName : 'My Trip';
   st.notes     = typeof raw.notes === 'string' ? raw.notes : '';
-  st.activePanel  = ['pins', 'travel', 'schedule', 'notes', 'trip'].indexOf(raw.activePanel) >= 0 ? raw.activePanel : 'pins';
+  st.activePanel  = ['schedule', 'travel', 'pins', 'trip'].indexOf(raw.activePanel) >= 0 ? raw.activePanel : 'schedule';
   st.tiles = providerBy(raw.tiles).key;
   st.schedFilter = raw.schedFilter === 'all' ? 'all' : 'city';
   st.schedDate = /^\d{4}-\d{2}-\d{2}$/.test(raw.schedDate) ? raw.schedDate : todayISO();
@@ -1276,7 +1263,7 @@ function normalize(raw) {
 }
 
 function defaultStateShape() {
-  const st = { v: 1, tripName: 'My Trip', activeCity: 'paris', activePanel: 'pins',
+  const st = { v: 1, tripName: 'My Trip', activeCity: 'paris', activePanel: 'schedule',
                focusDayId: null, notes: '', cities: {}, cityOrder: [], days: [], catFilter: [], tiles: 'esriDark', schedFilter: 'city', schedDate: todayISO(), updatedAt: 0 };
   SEED_ORDER.forEach(function (k) { st.cities[k] = makeCity(SEED_CITIES[k]); st.cityOrder.push(k); });
   return st;
@@ -1912,7 +1899,6 @@ function renderPins() {
   const origin = baseOrCentre();
 
   byId('pins-city-name').textContent = CITY(S.activeCity).name;
-  byId('nt-city-name').textContent = CITY(S.activeCity).name;
   byId('map-city-title').textContent = CITY(S.activeCity).name + ' · ' + CITY(S.activeCity).country;
   byId('tv-settings-city').textContent = CITY(S.activeCity).name;
 
@@ -2671,7 +2657,11 @@ function renderSchedule() {
       /* Travel leg into this stop — the mode select lives here, because
          a mode describes how you GOT to the stop below it. */
       if (i > 0) {
-        h += '<div class="leg-bar">' +
+        /* The whole bar draws that leg on the map. The mode select sits
+           inside it and carries its own data-act, so changing the mode
+           never triggers this. */
+        h += '<div class="leg-bar clickable" data-act="leg-route" data-day="' + day.id + '" data-id="' + it.id +
+             '" title="Show this leg on the map">' +
                '<select data-act="item-mode" data-day="' + day.id + '" data-id="' + it.id + '">' +
                MODE_ORDER.map(function (m) {
                  return '<option value="' + m + '"' + (it.mode === m ? ' selected' : '') + '>' +
@@ -2701,7 +2691,10 @@ function renderSchedule() {
              '</div>' +
              '<div class="item-main">' +
                '<div class="item-top">' +
-                 '<span class="num-badge">' + r.n + '</span>' +
+                 (r.pt
+                   ? '<button class="num-badge num-btn" data-act="pin-focus" data-id="' + r.pt.id +
+                     '" title="Show this stop on the map">' + r.n + '</button>'
+                   : '<span class="num-badge">' + r.n + '</span>') +
                  '<input class="inp item-time" type="time" data-act="item-time" data-day="' + day.id + '" data-id="' + it.id + '" value="' + esc(it.time) + '">' +
                  '<input class="inp item-dur" type="number" min="0" step="5" data-act="item-dur" data-day="' + day.id + '" data-id="' + it.id + '" value="' + (parseFloat(it.dur) || 0) + '" title="Minutes spent here">' +
                  '<span class="card-note">min</span>' +
@@ -2997,38 +2990,22 @@ function renderFocus() {
 /* ─── 6e. NOTES PANEL ───────────────────────────────────────────── */
 
 function renderNotes() {
-  byId('nt-city').value = S.cities[S.activeCity].notes;
-  const filled = (S.notes ? 1 : 0) + S.cityOrder.filter(function (k) { return S.cities[k].notes; }).length +
-                 S.days.filter(function (d) { return d.notes; }).length;
-  byId('badge-notes').textContent = filled ? filled + ' noted' : '—';
-
-  const city = S.cities[S.activeCity];
-  const counts = {};
-  city.pins.forEach(function (p) { counts[p.cat] = (counts[p.cat] || 0) + 1; });
-  const base = basePin();
-
-  let h = '<div class="chip-row">' + CAT_ORDER.filter(function (c) { return counts[c]; }).map(function (c) {
-    return '<span class="chip chip-static"><span class="dot" style="--cat:' + CATS[c].color + '"></span>' +
-           esc(CATS[c].label) + ' <b>' + counts[c] + '</b></span>';
-  }).join('') + '</div>';
-
-  h += '<div class="card-note">Base in ' + esc(CITY(S.activeCity).name) + ': <b>' +
-       (base ? esc(base.name) : 'not set — use 🏠 on a place') + '</b></div>';
-
-  const days = S.days.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
-  if (days.length) {
-    h += '<table class="tbl"><thead><tr><th>Day</th><th>City</th><th class="num">Stops</th><th class="num">Travel</th></tr></thead><tbody>' +
-      days.map(function (d) {
-        const c = dayComputed(d);
-        return '<tr class="clickable" data-act="day-focus" data-id="' + d.id + '">' +
-               '<td>' + esc(fmtDate(d.date)) + (d.title ? ' <span class="card-note">' + esc(d.title) + '</span>' : '') + '</td>' +
-               '<td>' + CITY(d.city).flag + ' ' + esc(CITY(d.city).name) + '</td>' +
-               '<td class="num">' + c.stops + '</td>' +
-               '<td class="num">' + fmtMin(c.travelMin) + '</td></tr>';
-      }).join('') + '</tbody></table>';
-  }
-  byId('nt-glance').innerHTML = h;
+  /* Only the trip-wide note survived the Notes tab; per-stop notes live
+     on the stop, which is where they are actually useful. */
+  const ta = byId('nt-trip');
+  if (ta && document.activeElement !== ta) ta.value = S.notes || '';
 }
+
+function renderHeaderTrips() {
+  const sel = byId('hdr-trip-select');
+  if (!sel) return;
+  sel.innerHTML = DOC.tripOrder.map(function (k) {
+    const t = DOC.trips[k];
+    return '<option value="' + k + '"' + (k === DOC.activeTripId ? ' selected' : '') + '>' +
+           esc(t.tripName) + '</option>';
+  }).join('');
+}
+
 
 
 /* ─── 7b. SYNC THROUGH A PRIVATE GITHUB REPO ────────────────────── */
@@ -3824,6 +3801,7 @@ function renderAll() {
   renderTravel();
   renderSchedule();
   renderNotes();
+  renderHeaderTrips();
   renderFocus();
   renderTrip();
   drawMap();
@@ -3831,7 +3809,7 @@ function renderAll() {
 
 function showPanel(id) {
   S.activePanel = id;
-  ['pins', 'travel', 'schedule', 'notes', 'trip'].forEach(function (p) {
+  ['schedule', 'travel', 'pins', 'trip'].forEach(function (p) {
     byId('panel-' + p).classList.toggle('hidden', p !== id);
   });
   Array.prototype.forEach.call(document.querySelectorAll('.panel-tab'), function (b) {
@@ -4147,7 +4125,14 @@ document.addEventListener('change', function (ev) {
     }
     default: return;
   }
-  save(); renderSchedule(); renderFocus(); drawMap();
+  save();
+  /* Chrome fires `change` on a time field as each segment is completed,
+     so rebuilding the card here tore the input out from under the pointer
+     — which is why clicking the hour or the minute appeared to do nothing
+     and only typing the whole value worked. These two refresh the derived
+     numbers now and rebuild the card once you leave the field. */
+  if (act === 'item-time' || act === 'item-dur') { renderFocus(); drawMap(); return; }
+  renderSchedule(); renderFocus(); drawMap();
 });
 
 /* Delegated input: free text only. Saves, never re-renders. */
@@ -4194,7 +4179,6 @@ function wire() {
 
   byId('trip-name').addEventListener('input', function () { S.tripName = this.value; saveSoon(); });
   byId('nt-trip').addEventListener('input', function () { S.notes = this.value; saveSoon(); });
-  byId('nt-city').addEventListener('input', function () { S.cities[S.activeCity].notes = this.value; saveSoon(); });
   byId('pin-filter').addEventListener('input', renderPins);
 
   byId('btn-pin-save').addEventListener('click', savePinFromForm);
@@ -4257,6 +4241,23 @@ function wire() {
     if (!e.target.closest('.search-wrap')) byId('search-results').classList.add('hidden');
   });
 
+  /* Rebuild once the time or duration field is really done with.
+     `relatedTarget` is the element about to receive focus, so moving
+     between two time fields does not rebuild the card underneath you. */
+  document.addEventListener('focusout', function (ev) {
+    const el = ev.target;
+    if (!el || !el.getAttribute) return;
+    const a = el.getAttribute('data-act');
+    if (a !== 'item-time' && a !== 'item-dur') return;
+    const to = ev.relatedTarget;
+    const na = (to && to.getAttribute) ? to.getAttribute('data-act') : null;
+    if (na === 'item-time' || na === 'item-dur') return;
+    /* Not here: rebuilding the card while the browser is still processing
+       the blur throws NotFoundError as it tries to move the node that is
+       losing focus. One tick later the DOM is settled. */
+    setTimeout(renderSchedule, 0);
+  });
+
   document.addEventListener('visibilitychange', ghMaybePull);
   window.addEventListener('focus', ghMaybePull);
 
@@ -4266,6 +4267,7 @@ function wire() {
   });
 
   byId('trip-select').addEventListener('change', function () { switchTrip(this.value); });
+  byId('hdr-trip-select').addEventListener('change', function () { switchTrip(this.value); });
   byId('btn-trip-new').addEventListener('click', newTrip);
   byId('btn-trip-dup').addEventListener('click', duplicateTrip);
   byId('btn-trip-del').addEventListener('click', deleteTrip);
