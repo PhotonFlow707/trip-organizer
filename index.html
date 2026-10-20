@@ -83,16 +83,17 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 }
 .hdr-brand { display: flex; align-items: center; gap: var(--sp-sm); min-width: 0; }
 .hdr-logo { font-size: 1.6rem; line-height: 1; filter: drop-shadow(0 0 10px var(--blue-glow)); }
-.trip-name {
+/* The picker IS the page title now, so it is weighted like one and only
+   shows its chrome on hover. Renaming lives on the Trip tab. */
+.hdr-trip { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.hdr-trip .trip-pick {
   background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm);
   font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em;
-  padding: 3px 6px; width: 16ch; max-width: 32vw;
+  width: auto; max-width: 42vw; padding: 3px 26px 3px 7px;
   transition: all .15s var(--ease);
 }
-.trip-name:hover { border-color: var(--border); background: var(--bg-hover); }
-.trip-name:focus { outline: none; border-color: var(--border-active); background: var(--bg-sunken); width: 24ch; }
-.hdr-trip { display: flex; align-items: center; gap: var(--sp-sm); }
-.hdr-trip .inp { width: auto; max-width: 240px; font-weight: 600; font-size: .8rem; padding: 7px 26px 7px 10px; }
+.hdr-trip .trip-pick:hover { border-color: var(--border); background: var(--bg-hover); }
+.hdr-trip .trip-pick:focus { outline: none; border-color: var(--border-active); background: var(--bg-sunken); }
 .hdr-sub { font-size: .66rem; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; padding-left: 7px; }
 
 .city-tabs { display: flex; gap: var(--sp-xs); flex-wrap: wrap; }
@@ -528,11 +529,27 @@ details.box > summary:hover { color: var(--text-1); }
   .layout { padding: var(--sp-sm); gap: var(--sp-sm); }
   .app-header { padding: var(--sp-sm) var(--sp-md); gap: var(--sp-sm); row-gap: var(--sp-sm); }
   .hdr-brand { flex: 1 1 auto; }
-  .trip-name { max-width: 46vw; }
   .city-tabs { order: 3; width: 100%; }
+
+  /* The working tabs sit in the header on a phone, right under the
+     cities, because that is the order you read the page in: which trip,
+     which city, which view. The node is moved below - `order` cannot
+     interleave children of two different parents. */
+  .panel-tabs { order: 4; width: 100%; margin-bottom: 0; }
+  .panel-tab { padding: 8px 4px; }
+  .panel-tab .badge { font-size: .58rem; }
   .city-tab { flex: 1; justify-content: center; padding: 10px 6px; font-size: .78rem; }
   .city-tab .cnt { display: none; }
-  .hdr-actions { order: 4; width: 100%; }
+  /* Copy, Export and Import are end-of-session actions, not things you
+     reach for while planning, so they live at the foot of the page. */
+  .hdr-actions {
+    margin: var(--sp-md) 0 0;
+    padding: var(--sp-md) var(--sp-md) calc(var(--sp-lg) + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border);
+    justify-content: center;
+    width: 100%;
+  }
+  .hdr-actions .btn { flex: 1 1 auto; justify-content: center; min-width: 0; }
   .hdr-actions .btn { flex: 1; justify-content: center; padding: 10px 8px; }
 
   /* Nothing may scroll sideways. `clip` rather than `hidden`: hidden
@@ -583,7 +600,7 @@ details.box > summary:hover { color: var(--text-1); }
 
   /* Wide-ish rows that would otherwise push the page sideways. */
   .hdr-trip { min-width: 0; }
-  .hdr-trip .inp { max-width: 44vw; }
+  .hdr-trip .trip-pick { max-width: 62vw; }
   .tbl th, .tbl td { padding: 8px 5px; font-size: .74rem; }
   .tbl .num { white-space: normal; }
   .tbl .mode-cell { gap: 5px; }
@@ -626,23 +643,22 @@ details.box > summary:hover { color: var(--text-1); }
 <header class="app-header">
   <div class="hdr-brand">
     <span class="hdr-logo">🗺️</span>
-    <div>
-      <input id="trip-name" class="trip-name" value="My Trip" aria-label="Trip name">
-      <div class="hdr-sub" id="hdr-sync">Trip Organizer</div>
-    </div>
     <div class="hdr-trip">
-      <select class="inp" id="hdr-trip-select" title="Switch trip"></select>
+      <select class="inp trip-pick" id="hdr-trip-select"
+              aria-label="Open trip" title="Switch trip"></select>
+      <div class="hdr-sub" id="hdr-sync">Trip Organizer</div>
     </div>
   </div>
 
   <nav class="city-tabs" id="city-tabs"></nav>
 
-  <div class="hdr-actions">
-    <button class="btn" id="btn-copy" title="Copy the whole itinerary as plain text">📋 Copy itinerary</button>
-    <button class="btn" id="btn-export" title="Download everything as JSON">⬇ Export</button>
-    <button class="btn" id="btn-import" title="Load a previously exported JSON file">⬆ Import</button>
-    <input type="file" id="file-import" accept=".json,application/json" hidden>
-  </div>
+    <nav class="panel-tabs" id="panel-tabs">
+      <button class="panel-tab" data-panel="schedule"><span class="ico">🗓️</span><span>Schedule</span><span class="badge" id="badge-schedule">0 days</span></button>
+      <button class="panel-tab" data-panel="travel"><span class="ico">🚆</span><span>Travel</span><span class="badge" id="badge-travel">5 modes</span></button>
+      <button class="panel-tab" data-panel="pins"><span class="ico">📍</span><span>Places</span><span class="badge" id="badge-pins">0</span></button>
+      <button class="panel-tab" data-panel="trip"><span class="ico">🧭</span><span>Trip</span><span class="badge" id="badge-trip">1</span></button>
+    </nav>
+
 </header>
 
 <div id="storage-warn" class="banner hidden"></div>
@@ -651,12 +667,6 @@ details.box > summary:hover { color: var(--text-1); }
 
   <!-- ── Left column: the four working panels ──────────────────── -->
   <section class="col-left">
-    <nav class="panel-tabs" id="panel-tabs">
-      <button class="panel-tab" data-panel="schedule"><span class="ico">🗓️</span><span>Schedule</span><span class="badge" id="badge-schedule">0 days</span></button>
-      <button class="panel-tab" data-panel="travel"><span class="ico">🚆</span><span>Travel</span><span class="badge" id="badge-travel">5 modes</span></button>
-      <button class="panel-tab" data-panel="pins"><span class="ico">📍</span><span>Places</span><span class="badge" id="badge-pins">0</span></button>
-      <button class="panel-tab" data-panel="trip"><span class="ico">🧭</span><span>Trip</span><span class="badge" id="badge-trip">1</span></button>
-    </nav>
 
     <!-- Places ------------------------------------------------- -->
     <div class="panel" id="panel-pins">
@@ -733,6 +743,7 @@ details.box > summary:hover { color: var(--text-1); }
           </div>
           <div id="fac-route"></div>
           <div id="fac-list"></div>
+          <div id="fac-alts"></div>
         </div>
       </div>
 
@@ -752,6 +763,22 @@ details.box > summary:hover { color: var(--text-1); }
 
     <!-- Travel ------------------------------------------------- -->
     <div class="panel hidden" id="panel-travel">
+
+      <!-- Directions for the step last tapped, in Focused Day or below.
+           Above the search controls on purpose: it is what you came to
+           read, and tapping a step in the schedule fills it without
+           leaving the schedule. -->
+      <div class="card hidden" id="tv-dir-card">
+        <div class="card-head">
+          <span class="card-title">Step-by-step directions</span>
+          <span class="spacer"></span>
+          <span class="card-note" id="tv-dir-for"></span>
+        </div>
+        <div class="card-body">
+          <div id="tv-route"></div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-head">
           <span class="card-title">Distance &amp; travel time</span>
@@ -774,7 +801,6 @@ details.box > summary:hover { color: var(--text-1); }
           </div>
           <div class="stats" id="tv-stats"></div>
           <table class="tbl" id="tv-table"></table>
-          <div id="tv-route"></div>
           <div class="card-note" id="tv-note"></div>
         </div>
       </div>
@@ -839,6 +865,10 @@ details.box > summary:hover { color: var(--text-1); }
           <span class="card-note" id="trip-count"></span>
         </div>
         <div class="card-body">
+          <div class="field">
+            <label for="trip-rename">Trip name</label>
+            <input class="inp" id="trip-rename" placeholder="Unsupervised in Europe" autocomplete="off">
+          </div>
           <div class="field">
             <label for="trip-select">Open trip</label>
             <select class="inp" id="trip-select"></select>
@@ -970,6 +1000,13 @@ details.box > summary:hover { color: var(--text-1); }
     </div>
   </section>
 </main>
+
+  <div class="hdr-actions">
+    <button class="btn" id="btn-copy" title="Copy the whole itinerary as plain text">📋 Copy itinerary</button>
+    <button class="btn" id="btn-export" title="Download everything as JSON">⬇ Export</button>
+    <button class="btn" id="btn-import" title="Load a previously exported JSON file">⬆ Import</button>
+    <input type="file" id="file-import" accept=".json,application/json" hidden>
+  </div>
 <input type="file" id="att-file" hidden>
 
 
@@ -2407,6 +2444,87 @@ function streetRoute(mode, a, b) {
   });
 }
 
+/* MOTIS emits one step per OSM way, so a corridor or a platform comes
+   back as a dozen 2 m CONTINUEs on the same street. Sum the consecutive
+   ones that share a street and a level, and keep every stairway, lift and
+   change of level - inside a station those ARE the directions. */
+function mergeWalkSteps(raw) {
+  /* A lift and an escalator are each their own instruction, but any of
+     the three is one physical climb however many ways it spans. */
+  const VERTICAL = { STAIRS: 1, ESCALATOR: 1, ELEVATOR: 1 };
+  /* Below this, plain walking is not an instruction - but its distance is
+     still part of the leg, so it is absorbed rather than dropped. */
+  const MIN_M = 10;
+
+  const out = [];
+  let pending = 0;                 /* metres waiting for an instruction */
+
+  (raw || []).forEach(function (st) {
+    if (!st) return;
+    const dir = String(st.relativeDirection || 'CONTINUE').toUpperCase();
+    const name = String(st.streetName || '').trim();
+    const to = st.toLevel === undefined || st.toLevel === null ? null : st.toLevel;
+    const from = st.fromLevel === undefined || st.fromLevel === null ? null : st.fromLevel;
+    const d = st.distance || 0;
+    const last = out[out.length - 1];
+
+    /* A few metres of walking: absorb it where it arrives. Doing this in
+       one pass is the point - held back to a second pass, it separates
+       the two staircases or the two stretches of path on either side of
+       it, and they can no longer be merged. */
+    if (dir === 'CONTINUE' && d < MIN_M) {
+      if (last && last.dir === 'CONTINUE') last.distance += d;
+      else pending += d;
+      return;
+    }
+    /* Same street, still walking: one instruction, reporting the level it
+       ends on so a ramp that drops a floor still says so. */
+    if (last && dir === 'CONTINUE' && last.dir === 'CONTINUE' && last.name === name) {
+      last.distance += d;
+      last.toLevel = to;
+      return;
+    }
+    /* One staircase, however many ways it is mapped across. */
+    if (last && VERTICAL[dir] && last.dir === dir) {
+      last.distance += d;
+      last.toLevel = to;
+      return;
+    }
+    out.push({ dir: dir, name: name, distance: d + pending, fromLevel: from, toLevel: to });
+    pending = 0;
+  });
+
+  if (pending && out.length) out[out.length - 1].distance += pending;
+  return out;
+}
+
+/* One merged walking step, in words. Levels are spelled out because a
+   connection is often two floors down rather than along. */
+function walkStepText(x) {
+  const along = x.name ? ' along ' + x.name : '';
+  const lvl = (x.fromLevel !== null && x.toLevel !== null && x.fromLevel !== x.toLevel)
+    ? (x.toLevel < x.fromLevel ? ' down to level ' : ' up to level ') + x.toLevel
+    : '';
+  switch (x.dir) {
+    case 'STAIRS': return 'Take the stairs' + lvl + (x.name ? ' at ' + x.name : '');
+    case 'ELEVATOR': return 'Take the lift' + lvl;
+    case 'ESCALATOR': return 'Take the escalator' + lvl;
+    case 'CONTINUE': return 'Continue' + along + lvl;
+    case 'LEFT': case 'RIGHT':
+      return 'Turn ' + x.dir.toLowerCase() + along;
+    case 'SLIGHTLY_LEFT': return 'Bear left' + along;
+    case 'SLIGHTLY_RIGHT': return 'Bear right' + along;
+    case 'HARD_LEFT': return 'Turn sharply left' + along;
+    case 'HARD_RIGHT': return 'Turn sharply right' + along;
+    case 'CIRCLE_CLOCKWISE': case 'CIRCLE_COUNTERCLOCKWISE':
+      return 'Take the roundabout' + along;
+    case 'UTURN_LEFT': case 'UTURN_RIGHT': return 'Turn back' + along;
+    case 'DEPART': return 'Set off' + along;
+    default:
+      return x.dir.charAt(0) + x.dir.slice(1).toLowerCase().replace(/_/g, ' ') + along + lvl;
+  }
+}
+
 /* Bus and rail come back as a journey: walk, ride, maybe change, walk. */
 function transitRoute(mode, a, b, when) {
   const url = TRANSIT_URL + '?fromPlace=' + a[0].toFixed(6) + ',' + a[1].toFixed(6) +
@@ -2423,6 +2541,9 @@ function transitRoute(mode, a, b, when) {
       const g = l.legGeometry || {};
       return {
         kind: l.mode === 'WALK' ? 'connect' : 'transit',
+        /* Kept, not discarded: the walk to the platform and the change
+           inside the station are the parts nobody knows by heart. */
+        walkSteps: l.mode === 'WALK' ? mergeWalkSteps(l.steps) : null,
         vehicle: l.mode,
         line: l.routeShortName || l.routeLongName || '',
         color: /^[0-9a-fA-F]{6}$/.test(l.routeColor || '') ? '#' + l.routeColor : null,
@@ -2512,9 +2633,22 @@ function requestRoute(mode) {
 
 function renderRoutePanel() {
   const host = byId('tv-route');
+  const card = byId('tv-dir-card');
   if (!host) return;
-  if (!navRoute) { host.innerHTML = ''; return; }
+  if (!navRoute) {
+    host.innerHTML = '';
+    if (card) { card.classList.add('hidden'); card.hidden = true; }
+    return;
+  }
   const r = navRoute;
+  if (card) { card.classList.remove('hidden'); card.hidden = false; }
+  /* Say which step this is, so a list filled from the schedule is not
+     mistaken for the result of the search below it. */
+  const forEl = byId('tv-dir-for');
+  if (forEl) {
+    forEl.textContent = (r.fromLabel && r.toLabel)
+      ? r.fromLabel + ' \u2192 ' + r.toLabel : '';
+  }
 
   let h = '<div class="route-card"><div class="route-head">' +
     MODE_ICON[r.mode] + ' <span>' + esc(modeLabel(r.mode)) + '</span>' +
@@ -2547,12 +2681,42 @@ function renderRoutePanel() {
   }).join('') + '</div>';
 
   if (r.steps && r.steps.length) {
-    h += '<details class="box"><summary>🧭 Directions \u00b7 ' + r.steps.length + ' steps</summary>' +
+    /* Open, not collapsed: this is the thing the card is for. */
+    h += '<details class="box" open><summary>🧭 Directions \u00b7 ' + r.steps.length + ' steps</summary>' +
          '<div class="box-body"><ol class="dir-list">' +
          r.steps.map(function (st) {
            return '<li>' + esc(stepText(st)) +
                   (st.distance ? ' <span class="card-note">' + fmtKm(st.distance / 1000) + '</span>' : '') + '</li>';
          }).join('') + '</ol></div></details>';
+  }
+
+  /* A transit journey's walking is where the directions actually matter:
+     getting to the platform, and the change inside the station. */
+  if (r.kind === 'transit') {
+    const walks = r.legs.filter(function (l) { return l.walkSteps && l.walkSteps.length; });
+    if (walks.length) {
+      h += '<details class="box" open><summary>🧭 Walking directions \u00b7 ' +
+           walks.reduce(function (t, l) { return t + l.walkSteps.length; }, 0) + ' steps</summary>' +
+           '<div class="box-body">' +
+           walks.map(function (l) {
+             return '<div class="card-note" style="margin-bottom:4px">🚶 ' +
+                    esc(l.fromName || 'here') + ' \u2192 ' + esc(l.toName || 'the platform') +
+                    ' \u00b7 ' + esc(fmtMin(l.min)) + '</div>' +
+                    '<ol class="dir-list" style="margin-bottom:10px">' +
+                    l.walkSteps.map(function (x) {
+                      /* A staircase shows its length however short: a 6 m
+                         flight and a 30 m one are different things when
+                         you are deciding whether to find the lift. */
+                      const showD = x.distance > 0 && (x.distance >= 10 || x.dir !== 'CONTINUE');
+                      return '<li>' + esc(walkStepText(x)) +
+                             (showD ? ' <span class="card-note">' +
+                              fmtKm(x.distance / 1000) + '</span>' : '') + '</li>';
+                    }).join('') + '</ol>';
+           }).join('') + '</div></details>';
+    } else {
+      h += '<div class="card-note">No walking directions came back for this journey \u2014 ' +
+           'the lines and times above are what the operator published.</div>';
+    }
   }
   h += '<div class="card-note">' + esc(r.fromLabel) + ' → ' + esc(r.toLabel) + '. ' +
        (r.kind === 'transit'
@@ -3699,8 +3863,20 @@ function checkService(dayId, itemId) {
     if (st) st.innerHTML = 'Live flight data needs a paid service — use the tracker link below.';
     return;
   }
-  if (!r.number) { if (st) { st.textContent = 'Enter the service number first.'; st.classList.add('err'); } return; }
-  if (!r.station) { if (st) { st.textContent = 'Name the station it departs from, so it can be found.'; st.classList.add('err'); } return; }
+  /* The station alone is enough to be useful: the board shows what is
+     leaving and the service can be picked off it. A number without a
+     station cannot be looked up at all - there is no search-by-number
+     endpoint, every timetable query is anchored to a stop. */
+  if (!r.station) {
+    if (st) {
+      st.classList.add('err');
+      st.textContent = r.number
+        ? 'Which station does ' + r.number + ' leave from? A timetable can only be read at a stop.'
+        : 'Name the station it leaves from \u2014 that alone will show you what is departing.';
+    }
+    return;
+  }
+  if (!r.number) { showBoard(dayId, itemId); return; }
 
   const comp = dayComputed(day);
   const row = comp.rows.filter(function (x) { return x.it.id === it.id; })[0];
@@ -3777,7 +3953,89 @@ function checkService(dayId, itemId) {
           ? 'No service “' + r.number + '” leaving ' + r.station + ' near that time. Check the number, the station and the date.'
           : 'Could not reach the timetable service. Your booking details are saved.';
     }
+    /* Asking for more is more use when it arrives with the alternatives,
+       so a miss drops the real departure board underneath. */
+    if (m === 'nomatch') showBoard(dayId, itemId);
   });
+}
+
+/* Flight numbers resolve to a route - airline, and both airports with
+   coordinates - keylessly and with CORS open. No times and no gate: it is
+   a route database, and the card says as much. */
+const ADSBDB = 'https://api.adsbdb.com/v0/callsign/';
+
+/* "AF 1234", "af-1234" and "AF1234" are one flight. */
+function normFlight(v) { return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
+function airportLabel(a) {
+  if (!a) return '';
+  return (a.iata_code || a.icao_code || '?') +
+         (a.municipality ? ' \u00b7 ' + a.municipality : '');
+}
+
+function lookupFlight(dayId, itemId) {
+  const day = dayById(dayId);
+  const it = day ? (day.items || []).filter(function (x) { return x.id === itemId; })[0] : null;
+  if (!it) return;
+  const r = refOf(it);
+  const st = byId('ref-status-' + it.id);
+  const cs = normFlight(r.number);
+  if (!cs) {
+    if (st) { st.classList.add('err'); st.textContent = 'Enter the flight number \u2014 that is all this needs.'; }
+    return;
+  }
+  if (!/^[A-Z0-9]{2,3}[0-9]{1,4}$/.test(cs)) {
+    if (st) {
+      st.classList.add('err');
+      st.textContent = '\u201c' + r.number + '\u201d does not look like a flight number. ' +
+        'It needs the airline code and the digits together \u2014 AF1234, BA123, U21234.';
+    }
+    return;
+  }
+  if (st) { st.classList.remove('err'); st.textContent = 'Looking up ' + cs + '\u2026'; }
+
+  fetchJSON(ADSBDB + encodeURIComponent(cs), 20000).then(function (d) {
+    const fr = d && d.response && d.response.flightroute;
+    if (!fr || !fr.origin || !fr.destination) throw new Error('noroute');
+    r.route = {
+      at: Date.now(),
+      callsign: fr.callsign_iata || fr.callsign || cs,
+      airline: (fr.airline || {}).name || '',
+      from: {
+        code: fr.origin.iata_code || fr.origin.icao_code || '',
+        name: fr.origin.name || '', city: fr.origin.municipality || '',
+        lat: fr.origin.latitude, lng: fr.origin.longitude
+      },
+      to: {
+        code: fr.destination.iata_code || fr.destination.icao_code || '',
+        name: fr.destination.name || '', city: fr.destination.municipality || '',
+        lat: fr.destination.latitude, lng: fr.destination.longitude
+      }
+    };
+    save();
+    renderSchedule();
+    toast(r.route.callsign + ': ' + r.route.from.code + ' \u2192 ' + r.route.to.code);
+  }).catch(function (e) {
+    const m = String((e && e.message) || e);
+    const el = byId('ref-status-' + it.id);
+    if (!el) return;
+    el.classList.add('err');
+    /* Nothing found is the moment to ask for more, not to guess. */
+    el.textContent = m === 'noroute' || /\b400\b|\b404\b/.test(m)
+      ? 'No route on file for ' + cs + '. Check the airline code and digits, and try the ' +
+        'number as the airline prints it on the ticket \u2014 a codeshare is often filed under ' +
+        'the operating airline instead.'
+      : 'The flight database did not answer. Try again in a moment.';
+  });
+}
+
+/* Jump to the terminal map for one end of the flight. */
+function flightFacilities(name) {
+  showPanel('pins');
+  byId('fac-q').value = name;
+  findFacilities();
+  const card = byId('fac-q').closest('.card');
+  if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
 }
 
 /* Draw the service's own route, from the operator's shape. */
@@ -3812,6 +4070,110 @@ function showServiceOnMap(dayId, itemId) {
     .catch(function () { toast('That service\u2019s route is not available.', true); });
 }
 
+
+/* The last board read per item, so picking off it needs no second call. */
+let boardCache = {};
+
+/* Turn one stoptimes entry into the item's live record. */
+function liveFromStopTime(h, stopName, fallbackNumber) {
+  const p = h.place || {};
+  const delay = (p.departure && p.scheduledDeparture) ? minsBetween(p.departure, p.scheduledDeparture) : 0;
+  return {
+    at: Date.now(),
+    status: (h.cancelled || h.tripCancelled) ? 'cancelled' : 'found',
+    delayMin: delay,
+    realTime: !!h.realTime,
+    depart: p.departure || '',
+    scheduledDepart: p.scheduledDeparture || '',
+    headsign: h.headsign || '',
+    routeName: h.routeShortName || h.tripShortName || fallbackNumber || '',
+    tripId: h.tripId || '',
+    stopName: p.name || stopName || '',
+    alternatives: 1
+  };
+}
+
+/* What is leaving this stop around the time the day puts it. Everything a
+   ticket lookup needs is already in here, so choosing one is immediate. */
+function showBoard(dayId, itemId) {
+  const day = dayById(dayId);
+  const it = day ? (day.items || []).filter(function (x) { return x.id === itemId; })[0] : null;
+  if (!it) return;
+  const r = refOf(it);
+  const box = byId('ref-stops-' + it.id), st = byId('ref-status-' + it.id);
+  if (!r.station) return;
+
+  const comp = dayComputed(day);
+  const row = comp.rows.filter(function (x) { return x.it.id === it.id; })[0];
+  const mins = row && row.start !== null ? row.start : 9 * 60;
+  const when = legDepartISO(day, Math.max(0, mins - 30));
+  if (!when) return;
+
+  box.classList.remove('hidden');
+  box.innerHTML = '<div class="search-item">Reading the departure board\u2026</div>';
+
+  const resolve = r.stopId
+    ? Promise.resolve([{ id: r.stopId, name: r.station }])
+    : tsStops(r.station, r.kind);
+
+  resolve.then(function (stops) {
+    if (!stops.length) throw new Error('nostation');
+    const stop = stops[0];
+    return tsDepartures(stop.id, when.iso, 60).then(function (d) {
+      return { stop: stop, rows: (d.stopTimes || []) };
+    });
+  }).then(function (res) {
+    const rows = res.rows.filter(function (x) {
+      return x && (x.routeShortName || x.tripShortName);
+    });
+    if (!rows.length) throw new Error('empty');
+    boardCache[it.id] = { stop: res.stop, rows: rows };
+    if (st) { st.classList.remove('err'); st.textContent = ''; }
+    box.innerHTML = '<div class="search-item"><b>' + esc(res.stop.name || r.station) + '</b>' +
+        '<div class="si-sub">' + rows.length + ' departures around ' + esc(hhmm(when.iso)) +
+        ' \u2014 tap yours</div></div>' +
+      rows.slice(0, 25).map(function (x, i) {
+        const p = x.place || {};
+        const dep = p.departure || p.scheduledDeparture || '';
+        const delay = (p.departure && p.scheduledDeparture) ? minsBetween(p.departure, p.scheduledDeparture) : 0;
+        return '<div class="search-item" data-act="ref-board-pick" data-day="' + day.id +
+               '" data-id="' + it.id + '" data-idx="' + i + '">' +
+               '<div>' + esc(hhmm(dep)) + ' \u00b7 <b>' +
+               esc(x.routeShortName || x.tripShortName) + '</b>' +
+               (delay ? ' <span class="live-badge live-late">' + (delay > 0 ? '+' : '') + delay + ' min</span>' : '') +
+               '</div>' +
+               '<div class="si-sub">' + esc(x.headsign || '') +
+               (x.realTime ? ' \u00b7 live' : ' \u00b7 timetable') + '</div></div>';
+      }).join('');
+  }).catch(function (e) {
+    const m = String((e && e.message) || e);
+    box.innerHTML = '<div class="search-item">' +
+      (m === 'nostation'
+        ? 'No stop matched \u201c' + esc(r.station) + '\u201d. Mainline stations are often listed ' +
+          'under a shorter name \u2014 try \u201cParis Est\u201d rather than \u201cParis Gare de l\u2019Est\u201d.'
+        : m === 'empty'
+          ? 'Nothing is timetabled there around that time. Check the day and the hour on this stop, ' +
+            'or pick the exact stop if the name is shared.'
+          : 'The timetable service did not answer.') + '</div>';
+  });
+}
+
+/* One tap on the board is a complete lookup: the entry already carries the
+   times, the delay and the trip id. */
+function boardPick(dayId, itemId, idx) {
+  const day = dayById(dayId);
+  const it = day ? (day.items || []).filter(function (x) { return x.id === itemId; })[0] : null;
+  const cache = it ? boardCache[it.id] : null;
+  if (!it || !cache || !cache.rows[idx]) return;
+  const r = refOf(it);
+  const h = cache.rows[idx];
+  r.number = h.routeShortName || h.tripShortName || r.number;
+  if (cache.stop && cache.stop.id) { r.stopId = cache.stop.id; r.station = cache.stop.name || r.station; }
+  it.live = liveFromStopTime(h, cache.stop && cache.stop.name, r.number);
+  save();
+  renderSchedule(); renderFocus();
+  toast(r.number + ': ' + liveLabel(it.live) + (it.live.headsign ? ' towards ' + it.live.headsign : ''));
+}
 
 /* Let the user nail the station down once; every later check is exact. */
 function pickStation(dayId, itemId) {
@@ -3861,7 +4223,7 @@ function refHtml(day, it) {
   const r = refOf(it);
   const live = it.live;
   const isFlight = r.kind === 'flight';
-  const filled = r.number || r.code || r.seat;
+  const filled = r.number || r.code || r.seat || r.route;
   let h = '<details class="box ref-box"' + (filled ? ' open' : '') + '>' +
     '<summary>🎫 Ticket' + (r.number ? ' \u00b7 ' + esc(r.number) : '') +
     (live ? ' <span class="live-badge ' + liveClass(live) + '">' + esc(liveLabel(live)) + '</span>' : '') +
@@ -3886,14 +4248,30 @@ function refHtml(day, it) {
     '</div>';
 
   if (isFlight) {
-    h += '<div class="card-note">A booking code can only be opened by the airline that issued it, and every ' +
-         'keyless live-flight feed refuses browser requests \u2014 so this is kept for reference and checked ' +
-         'outside the app.</div>';
-    if (r.number) {
-      h += '<div class="form-actions"><a class="btn btn-sm" target="_blank" rel="noopener" href="' +
-           'https://www.google.com/search?q=' + encodeURIComponent(r.number + ' flight status') +
-           '">\u2197 Live status for ' + esc(r.number) + '</a></div>';
+    h += '<div class="form-actions">' +
+           '<button class="btn btn-sm btn-primary" data-act="ref-flight" data-day="' + day.id +
+             '" data-id="' + it.id + '">🔎 Look up flight</button>' +
+           (r.number
+             ? '<a class="btn btn-sm" target="_blank" rel="noopener" href="' +
+               'https://www.google.com/search?q=' + encodeURIComponent(r.number + ' flight status') +
+               '">\u2197 Live status</a>' : '') +
+         '</div>';
+    const rt = r.route;
+    if (rt) {
+      h += '<div class="card-note"><b>' + esc(rt.callsign) + '</b>' +
+           (rt.airline ? ' \u00b7 ' + esc(rt.airline) : '') + '<br>' +
+           esc(rt.from.name || rt.from.code) + ' <b>' + esc(rt.from.code) + '</b>' +
+           ' \u2192 ' + esc(rt.to.name || rt.to.code) + ' <b>' + esc(rt.to.code) + '</b></div>' +
+           '<div class="form-actions">' +
+             '<button class="btn btn-sm" data-act="ref-fac" data-name="' + esc(rt.from.name || rt.from.city) +
+               '">🛫 Terminal map: ' + esc(rt.from.code) + '</button>' +
+             '<button class="btn btn-sm" data-act="ref-fac" data-name="' + esc(rt.to.name || rt.to.city) +
+               '">🛬 Terminal map: ' + esc(rt.to.code) + '</button>' +
+           '</div>';
     }
+    h += '<div class="card-note">Airline and airports come from an open flight-route database, so the ' +
+         'flight number alone is enough. There are no departure times or gates in it, and no keyless ' +
+         'live-flight feed will answer a browser \u2014 use the status link for those.</div>';
   } else {
     h += '<input class="inp" data-act="ref-field" data-day="' + day.id + '" data-id="' + it.id +
          '" data-field="station" value="' + esc(r.station) + '" placeholder="Departs from \u2014 e.g. Paris Gare de l\u2019Est" autocomplete="off">' +
@@ -3901,7 +4279,7 @@ function refHtml(day, it) {
            '<button class="btn btn-sm" data-act="ref-station" data-day="' + day.id + '" data-id="' + it.id +
              '">\u2316 Pick exact stop</button>' +
            '<button class="btn btn-sm btn-primary" data-act="ref-check" data-day="' + day.id + '" data-id="' + it.id +
-             '">Check running status</button>' +
+             '">' + (r.number ? 'Check running status' : '🔎 Show departures') + '</button>' +
            (live && live.tripId
              ? '<button class="btn btn-sm" data-act="ref-map" data-day="' + day.id + '" data-id="' + it.id +
                '">Show its route</button>' : '') +
@@ -3972,68 +4350,299 @@ function overpass(query) {
    offer it without asking Overpass again. */
 let facFound = [];
 
+/* The widest span a facility search may cover. An airport is ~4 km
+   across and a big station well under 2; anything larger than this is a
+   town, and listing its every tram platform is useless. */
+const FAC_MAX_KM = 9;
+
+/* One spelling of the quote marks for every facility message: the two
+   messages below used to spell them differently, and drifted. */
+const QL = '\u201c', QR = '\u201d';
+
+/* A place you can walk around, as Nominatim classifies it. */
+const FAC_PLACE_SCORE = {
+  'aeroway:aerodrome': 4, 'aeroway:terminal': 4, 'aeroway:airport': 4,
+  'railway:station': 4, 'public_transport:station': 4,
+  'amenity:bus_station': 4, 'amenity:ferry_terminal': 4,
+  'railway:halt': 3, 'building:train_station': 3, 'building:transportation': 3,
+  'railway:platform': 2, 'public_transport:platform': 2
+};
+
+/* Classes that are regions or landmarks, never a facility. A city is the
+   whole reason this went wrong, so it is refused rather than clamped. */
+const FAC_PLACE_REJECT = { boundary: 1, place: 1, historic: 1, landuse: 1,
+                           natural: 1, waterway: 1, tourism: 1, leisure: 1 };
+
+function facPlaceScore(h) {
+  const cls = String(h && h.class || ''), typ = String(h && h.type || '');
+  if (FAC_PLACE_REJECT[cls]) return 0;
+  return FAC_PLACE_SCORE[cls + ':' + typ] || 1;   /* unknown, but not a region */
+}
+
+function facPlaceLabel(h) {
+  return String(h.display_name || '').split(',')[0] || 'that place';
+}
+
+/* Roughly where it is. Two stations share a name far more often than they
+   share a region, so this is what tells them apart on screen. */
+function facPlaceWhere(h) {
+  const parts = String(h.display_name || '').split(',').map(function (x) { return x.trim(); });
+  return parts.length > 2 ? parts.slice(-2).join(', ') : (parts[1] || '');
+}
+
+/* Set when the plain name had to be qualified, so the card can say so. */
+let facReadAs = '';
+/* Set when nothing stronger than a platform could be found. */
+let facWeak = false;
+
+/* How the name was read, and how solid the anchor was. EVERY result -
+   the full list and the empty one - carries both through these, because
+   written out at each call site they drifted apart. */
+function facReadPrefix() {
+  return facReadAs ? 'Read as ' + QL + facReadAs + QR + '. ' : '';
+}
+function facWeakNote() {
+  return facWeak
+    ? ' That is a stop rather than a whole airport or station, so this is what is around it'
+      + ' \u2014 name the building itself if you meant one.'
+    : '';
+}
+
+/* The candidates from the last search, so a wrong match is one tap to fix. */
+let facHits = [];
+
+/* How the name is worth reading, most literal first. A bare three-letter
+   code is an airport code; an unqualified name may be a memorial or a
+   square, and the facility of that name is what was meant. */
+function facSearchTerms(q) {
+  const terms = [q];
+  if (/^[A-Za-z]{3}$/.test(q)) {
+    terms.push(q.toUpperCase() + ' airport');
+  } else {
+    if (!/airport|a[eé]roport|aeroporto|aeropuerto|flughafen|airfield/i.test(q)) terms.push(q + ' airport');
+    if (!/station|gare|bahnhof|estaci|stazione|terminal/i.test(q)) terms.push(q + ' station');
+  }
+  return terms;
+}
+
+/* A match strong enough to define a search area: an aerodrome, a station,
+   a terminal. A lone platform or an unrecognised tag is not - its own
+   footprint is metres across, so the box around it is really just
+   "wherever this happens to be", which is how "Charles de Gaulle" came
+   back as the Metro stop in central Paris. */
+const FAC_PLACE_STRONG = 3;
+
+/* Try each reading in turn, strongest wins. Sequential on purpose:
+   Nominatim asks for one request at a time, and the later terms only run
+   when the plain name has not produced a real facility. */
+function facGeocodeChain(terms, i, weak, rejected, tried) {
+  i = i || 0;
+  tried = tried || [];
+  if (i >= terms.length) {
+    /* No reading found a real facility. A weak match is better than
+       nothing, but only now, and the caller says which name it used. */
+    if (weak) { weak.tried = tried; return Promise.resolve(weak); }
+    const e = new Error('isregion');
+    /* Carry what WAS matched so the refusal can name it: "matches
+       Barcelona" says what went wrong, "matches a region" does not. */
+    e.best = rejected || null;
+    throw e;
+  }
+  return geocode(terms[i], true).then(function (hits) {
+    const withBox = (hits || []).filter(function (h) { return h && h.boundingbox; });
+    const scored = withBox.map(function (h, j) { return { h: h, j: j, s: facPlaceScore(h) }; })
+      .sort(function (a, b) { return b.s - a.s || a.j - b.j; });
+    const ranked = scored.filter(function (e) { return e.s > 0; }).map(function (e) { return e.h; });
+    const top = ranked[0];
+    if (top && facPlaceScore(top) >= FAC_PLACE_STRONG) {
+      return { hits: ranked, term: terms[i], qualified: i > 0, weak: false,
+               tried: tried.concat([terms[i]]) };
+    }
+    const held = weak || (top ? { hits: ranked, term: terms[i], qualified: i > 0, weak: true } : null);
+    return facGeocodeChain(terms, i + 1, held, rejected || (scored.length ? scored[0].h : null),
+                           tried.concat([terms[i]]));
+  }).catch(function (e) {
+    if (String(e && e.message) === 'isregion') throw e;
+    /* One reading failing to answer must not sink the rest. */
+    return facGeocodeChain(terms, i + 1, weak, rejected, tried.concat([terms[i]]));
+  });
+}
+
+/* What else the name could have meant. Run after a result is on screen,
+   so the list is never waiting on it. */
+function facGatherAlts(q, tried) {
+  /* Only readings nobody has asked about yet: one that already came
+     back as a city or a lone platform will do so again. */
+  const seen = tried || [];
+  const rest = facSearchTerms(q).filter(function (t) { return seen.indexOf(t) < 0; });
+  let chain = Promise.resolve();
+  rest.forEach(function (t) {
+    chain = chain.then(function () {
+      return geocode(t, true).then(function (hits) {
+        (hits || []).forEach(function (h) {
+          if (!h || !h.boundingbox) return;
+          if (facPlaceScore(h) < FAC_PLACE_STRONG) return;
+          const label = facPlaceLabel(h) + '|' + facPlaceWhere(h);
+          const dup = facHits.some(function (x) {
+            return (x.osm_id && h.osm_id && x.osm_id === h.osm_id) ||
+                   (facPlaceLabel(x) + '|' + facPlaceWhere(x)) === label;
+          });
+          if (!dup) facHits.push(h);
+        });
+      }).catch(function () { /* one reading failing must not lose the rest */ });
+    });
+  });
+  return chain.then(paintFacAlts);
+}
+
 function findFacilities() {
   const q = byId('fac-q').value.trim();
   const list = byId('fac-list'), st = byId('fac-status');
   st.classList.remove('err');
+  byId('fac-walk').hidden = true;
+  byId('fac-route').innerHTML = '';
+  byId('fac-alts').innerHTML = '';
   if (q.length < 3) { st.textContent = 'Name the airport or station first.'; st.classList.add('err'); return; }
   st.textContent = 'Locating ' + q + '\u2026';
   list.innerHTML = '';
 
-  geocode(q, true).then(function (hits) {
-    if (!hits.length) throw new Error('noplace');
-    const h = hits[0];
-    const bb = h.boundingbox;           /* [south, north, west, east] */
-    if (!bb) throw new Error('nobbox');
-    const box = [parseFloat(bb[0]), parseFloat(bb[2]), parseFloat(bb[1]), parseFloat(bb[3])];
-    st.textContent = 'Reading the map of ' + (String(h.display_name || q).split(',')[0]) + '\u2026';
-    const b = box.map(function (v) { return v.toFixed(5); }).join(',');
-    const query = '[out:json][timeout:25];(' +
-      'way["aeroway"="terminal"](' + b + ');' +
-      'relation["aeroway"="terminal"](' + b + ');' +
-      'node["aeroway"="gate"](' + b + ');' +
-      'node["railway"="station"](' + b + ');' +
-      'node["public_transport"="station"](' + b + ');' +
-      'way["public_transport"="platform"](' + b + ');' +
-      'node["public_transport"="platform"](' + b + ');' +
-      'node["railway"="subway_entrance"](' + b + ');' +
-      ');out center tags 400;';
-    return overpass(query).then(function (d) { return { d: d, name: String(h.display_name || q).split(',')[0] }; });
+  Promise.resolve().then(function () {
+    return facGeocodeChain(facSearchTerms(q), 0, null);
   }).then(function (res) {
+    facHits = res.hits;
+    facReadAs = res.qualified ? res.term : '';
+    facWeak = !!res.weak;
+    facLoad(0);
+    /* "Charles de Gaulle" is a station in Rennes AND an airport near
+       Paris, and both match the name perfectly. Offer the other readings
+       rather than pretend the first one is the answer. */
+    facGatherAlts(q, res.tried || [res.term]);
+  }).catch(function (e) {
+    const m = String((e && e.message) || e);
+    st.classList.add('err');
+    facHits = [];
+    st.textContent = m === 'isregion'
+      ? '\u201c' + q + '\u201d matches ' + (e.best ? facPlaceLabel(e.best) : 'a region') +
+        ', which is an area rather than a building \u2014 its every platform would be listed. ' +
+        'Name the facility itself, or add the operator, e.g. \u201cBarcelona Sants\u201d.'
+      : 'Could not find an airport or station by that name.';
+  });
+}
+
+/* Which candidate is on screen, so the alternatives can exclude it when
+   they are repainted after arriving late. */
+let facChosen = 0;
+
+/* The other things the name could have meant. Painted into its own box so
+   candidates found after the list is already up can simply appear. */
+function paintFacAlts() {
+  const host = byId('fac-alts');
+  if (!host) return;
+  const alts = facHits.map(function (h, i) { return { h: h, i: i }; })
+    .filter(function (e) { return e.i !== facChosen && facPlaceScore(e.h); })
+    .slice(0, 5);
+  if (!alts.length) { host.innerHTML = ''; return; }
+  host.innerHTML = '<div class="card-note" style="margin-top:var(--sp-sm)">' +
+    'That name also matches these \u2014 tap to search one instead:</div>' +
+    '<div class="chip-row">' +
+    alts.map(function (e) {
+      const where = facPlaceWhere(e.h);
+      return '<button class="chip" data-act="fac-place" data-idx="' + e.i + '">' +
+             esc(facPlaceLabel(e.h)) +
+             ' <span class="card-note">' + esc([e.h.type, where].filter(Boolean).join(' \u00b7 ')) +
+             '</span></button>';
+    }).join('') + '</div>';
+}
+
+/* Read one place's facilities. The box is clamped around its centre, so a
+   sprawling match cannot drag in half a city, and everything is measured
+   and sorted from that centre. */
+function facLoad(idx) {
+  const st = byId('fac-status'), list = byId('fac-list');
+  const h = facHits[idx];
+  if (!h) return;
+  facChosen = idx;
+  const bb = h.boundingbox;                      /* [south, north, west, east] */
+  let south = parseFloat(bb[0]), north = parseFloat(bb[1]);
+  let west = parseFloat(bb[2]), east = parseFloat(bb[3]);
+  const mid = [(south + north) / 2, (west + east) / 2];
+  /* Degrees that FAC_MAX_KM buys, at this latitude. */
+  const dLat = FAC_MAX_KM / 2 / 111.32;
+  const dLon = dLat / Math.max(0.2, Math.cos(mid[0] * Math.PI / 180));
+  const clamped = (north - south) > dLat * 2 || (east - west) > dLon * 2;
+  south = Math.max(south, mid[0] - dLat); north = Math.min(north, mid[0] + dLat);
+  west = Math.max(west, mid[1] - dLon);  east = Math.min(east, mid[1] + dLon);
+
+  const name = facPlaceLabel(h);
+  st.classList.remove('err');
+  st.textContent = 'Reading the map of ' + name + '\u2026';
+  list.innerHTML = '';
+  byId('fac-walk').hidden = true;
+  byId('fac-route').innerHTML = '';
+
+  const b = [south, west, north, east].map(function (v) { return v.toFixed(5); }).join(',');
+  const query = '[out:json][timeout:25];(' +
+    'way["aeroway"="terminal"](' + b + ');' +
+    'relation["aeroway"="terminal"](' + b + ');' +
+    'node["aeroway"="gate"](' + b + ');' +
+    'node["railway"="station"](' + b + ');' +
+    'node["public_transport"="station"](' + b + ');' +
+    'way["public_transport"="platform"](' + b + ');' +
+    'node["public_transport"="platform"](' + b + ');' +
+    'node["railway"="subway_entrance"](' + b + ');' +
+    ');out center tags 400;';
+
+  overpass(query).then(function (d) {
     const seen = {}, groups = {};
-    (res.d.elements || []).forEach(function (e) {
+    let far = 0;
+    (d.elements || []).forEach(function (e) {
       const tags = e.tags || {};
       const kind = facKindOf(tags);
       if (!kind) return;
-      const name = tags.name || tags.ref || tags['addr:housename'] || '';
-      if (!name) return;
+      const nm = tags.name || tags.ref || tags['addr:housename'] || '';
+      if (!nm) return;
       const c = e.center || e;
       if (!isFinite(c.lat) || !isFinite(c.lon)) return;
-      const key = kind + '|' + name;
-      if (seen[key]) return;
-      seen[key] = true;
-      (groups[kind] = groups[kind] || []).push({ name: name, lat: c.lat, lon: c.lon, kind: kind });
+      const km = haversine(mid, [c.lat, c.lon]);
+      if (km > FAC_MAX_KM / 2) { far++; return; }   /* a corner of the box, not the facility */
+      const key = kind + '|' + nm;
+      if (seen[key] && seen[key] <= km) return;
+      seen[key] = km;
+      (groups[kind] = groups[kind] || []).push({ name: nm, lat: c.lat, lon: c.lon, kind: kind, km: km });
     });
-    const total = Object.keys(groups).reduce(function (n, k) { return n + groups[k].length; }, 0);
-    if (!total) { st.textContent = 'Nothing mapped inside ' + res.name + '.'; return; }
+    Object.keys(groups).forEach(function (k) {
+      /* Nearest the centre first: the terminals before the far hangars. */
+      groups[k].sort(function (a, b) { return a.km - b.km; });
+    });
+    const total = Object.keys(groups).reduce(function (t, k) { return t + groups[k].length; }, 0);
+    if (!total) {
+      /* Say how the name was read here too: otherwise a reinterpreted
+         query reports nothing found under a name you never typed. */
+      st.textContent = facReadPrefix() + 'Nothing mapped inside ' + name + '.' +
+        (far ? ' (' + far + ' further out ignored.)' : '') + facWeakNote();
+      list.innerHTML = '';
+      paintFacAlts();
+      return;
+    }
     renderFacWalk(groups);
-    st.textContent = total + ' mapped at ' + res.name + ' \u2014 add what you need as places, then route between them.';
+    st.textContent = facReadPrefix() + total + ' mapped at ' + name + ', within ' +
+      (FAC_MAX_KM / 2).toFixed(1) + ' km of its centre' +
+      (clamped ? ' (its own area is larger, so the search was capped)' : '') + '.' +
+      facWeakNote();
     byId('fac-list').innerHTML = FAC_KINDS.filter(function (k) { return groups[k.key]; }).map(function (k) {
-      const items = groups[k.key].sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { numeric: true }); });
+      const items = groups[k.key];
       return '<div class="cat-group"><div class="cat-group-head">' + k.icon + ' ' + esc(k.label) +
              '<span class="n">' + items.length + '</span></div>' +
              '<div class="chip-row">' + items.slice(0, 60).map(function (f) {
                return '<button class="chip" data-act="fac-add" data-lat="' + f.lat + '" data-lng="' + f.lon +
                       '" data-name="' + esc(f.name) + '" data-kind="' + k.key + '" title="Add as a place">+ ' +
-                      esc(f.name) + '</button>';
+                      esc(f.name) + ' <span class="card-note">' + esc(fmtKm(f.km)) + '</span></button>';
              }).join('') + '</div></div>';
     }).join('');
-  }).catch(function (e) {
-    const m = String((e && e.message) || e);
+    paintFacAlts();
+  }).catch(function () {
     st.classList.add('err');
-    st.textContent = m === 'noplace' ? 'Could not find that airport or station.'
-      : m === 'nobbox' ? 'That place has no mapped area to search.'
-      : 'The map service did not answer. Try again in a moment.';
+    st.textContent = 'The map service did not answer. Try again in a moment.';
   });
 }
 
@@ -4151,7 +4760,7 @@ function adoptState(next) {
   editingPinId = null;
   clearNav();
   setDraft(null);
-  byId('trip-name').value = S.tripName;
+  byId('trip-rename').value = S.tripName;
   byId('nt-trip').value = S.notes;
   pinFormFill(null);
   showPanel(S.activePanel);
@@ -4332,6 +4941,8 @@ function findCity() {
 
 function renderTrip() {
   if (!byId('trip-select')) return;
+  const nm = byId('trip-rename');
+  if (nm && document.activeElement !== nm) nm.value = S.tripName || '';
   byId('trip-select').innerHTML = tripList().map(function (t) {
     return '<option value="' + t.id + '"' + (t.id === DOC.activeTripId ? ' selected' : '') + '>' +
            esc(t.tripName) + ' · ' + t.cityOrder.length + (t.cityOrder.length === 1 ? ' city' : ' cities') +
@@ -4388,7 +4999,7 @@ function importJSON(file) {
     S = normalize(parsed);
     editingPinId = null;
     setDraft(null);
-    byId('trip-name').value = S.tripName;
+    byId('trip-rename').value = S.tripName;
     byId('nt-trip').value = S.notes;
     pinFormFill(null);
     save();
@@ -4581,7 +5192,12 @@ document.addEventListener('click', function (ev) {
     }
 
     case 'ref-check': checkService(dayId, id); break;
+    case 'ref-flight': lookupFlight(dayId, id); break;
+    case 'ref-fac': flightFacilities(t.getAttribute('data-name') || ''); break;
     case 'ref-station': pickStation(dayId, id); break;
+    case 'ref-board-pick':
+      boardPick(dayId, id, parseInt(t.getAttribute('data-idx'), 10) || 0);
+      break;
     case 'ref-stop-pick':
       chooseStation(dayId, id, t.getAttribute('data-stopid'), t.getAttribute('data-name'));
       break;
@@ -4657,6 +5273,7 @@ document.addEventListener('click', function (ev) {
       break;
     }
 
+    case 'fac-place': facLoad(parseInt(t.getAttribute('data-idx'), 10) || 0); break;
     case 'fac-add':
       addFacility(t.getAttribute('data-name'), t.getAttribute('data-lat'),
                   t.getAttribute('data-lng'), t.getAttribute('data-kind'));
@@ -4925,7 +5542,14 @@ function wire() {
     b.addEventListener('click', function () { showPanel(b.getAttribute('data-panel')); });
   });
 
-  byId('trip-name').addEventListener('input', function () { S.tripName = this.value; saveSoon(); });
+  /* Renaming retitles the header as you type, since the picker is the
+     title. Neither renderer touches this input while it has focus. */
+  byId('trip-rename').addEventListener('input', function () {
+    S.tripName = this.value;
+    saveSoon();
+    renderHeaderTrips();
+    renderTrip();
+  });
   byId('nt-trip').addEventListener('input', function () { S.notes = this.value; saveSoon(); });
   byId('pin-filter').addEventListener('input', renderPins);
 
@@ -5053,7 +5677,7 @@ function init() {
   if (!storageOK) {
     storageWarn('This browser will not let the page store anything (private window?). Everything works, but nothing survives a reload — use Export.');
   }
-  byId('trip-name').value = S.tripName;
+  byId('trip-rename').value = S.tripName;
   byId('nt-trip').value = S.notes;
   /* Tomorrow morning: a weekday-ish default that returns real timetables
      rather than the thin overnight service. */
