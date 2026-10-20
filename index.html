@@ -473,6 +473,12 @@ tr.routing td { opacity: .65; }
              font-size: .76rem; line-height: 1.45; }
 .dir-list li::marker { color: var(--text-3); font-size: .7rem; }
 #fac-list .chip-row { margin-bottom: var(--sp-sm); }
+.flight-ends { display: flex; align-items: center; gap: var(--sp-sm); flex-wrap: wrap;
+  padding: 8px 10px; background: var(--bg-sunken); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); }
+.flight-ends .fe-code { font-weight: 700; font-size: 1.05rem; letter-spacing: .02em; }
+.flight-ends .fe-arrow { color: var(--text-3); }
+.fl-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .fac-walk { display: flex; gap: var(--sp-xs); align-items: center; margin-top: var(--sp-sm); }
 .fac-walk .inp { flex: 1; min-width: 0; }
 .fac-walk .fac-arrow { color: var(--text-3); flex: none; }
@@ -3721,7 +3727,12 @@ function attListHtml(day, it) {
 const TRANSITOUS = 'https://api.transitous.org/api/v1/';
 
 function refOf(it) {
-  if (!it.ref) it.ref = { kind: 'train', number: '', code: '', seat: '', station: '', stopId: '' };
+  if (!it.ref) {
+    it.ref = { kind: 'train', number: '', code: '', seat: '', station: '', stopId: '',
+               arrAt: '', depTerm: '', arrTerm: '' };
+  }
+  /* Records written before the flight fields existed. */
+  if (it.ref.arrAt === undefined) { it.ref.arrAt = ''; it.ref.depTerm = ''; it.ref.arrTerm = ''; }
   return it.ref;
 }
 
@@ -3948,6 +3959,7 @@ function checkService(dayId, itemId) {
    coordinates - keylessly and with CORS open. No times and no gate: it is
    a route database, and the card says as much. */
 const ADSBDB = 'https://api.adsbdb.com/v0/callsign/';
+const ADSBDB_AIRLINE = 'https://api.adsbdb.com/v0/airline/';
 
 /* "AF 1234", "af-1234" and "AF1234" are one flight. */
 function normFlight(v) { return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
@@ -3979,9 +3991,55 @@ function lookupFlight(dayId, itemId) {
   }
   if (st) { st.classList.remove('err'); st.textContent = 'Looking up ' + cs + '\u2026'; }
 
-  fetchJSON(ADSBDB + encodeURIComponent(cs), 20000).then(function (d) {
-    const fr = d && d.response && d.response.flightroute;
-    if (!fr || !fr.origin || !fr.destination) throw new Error('noroute');
+  /* The database is keyed on the ICAO callsign. AF3653 is a 404 while
+     AFR3653 is Air France SEA -> CDG, and AF337 happens to answer to
+     both, so the IATA form cannot be trusted on its own.
+
+     Where the code ends cannot be read off one pattern: it is two or
+     three characters and may contain a digit (U2, W6, 3U). A greedy
+     [A-Z0-9]{2,3} split AF3653 into "AF3" + "653" and asked who airline
+     AF3 was. Both splits are tried, the two-character one first, because
+     that is the form printed on a ticket. */
+  const splits = [];
+  [2, 3].forEach(function (len) {
+    if (cs.length > len && /^[0-9]+$/.test(cs.slice(len))) {
+      splits.push({ prefix: cs.slice(0, len), digits: cs.slice(len) });
+    }
+  });
+
+  function tryCallsign(code) {
+    return fetchJSON(ADSBDB + encodeURIComponent(code), 20000).then(function (d) {
+      const fr = d && d.response && d.response.flightroute;
+      if (!fr || !fr.origin || !fr.destination) throw new Error('noroute');
+      return fr;
+    });
+  }
+
+  /* Ask who a prefix belongs to, then try that airline's ICAO code. One
+     IATA prefix can belong to several airlines (AF is Air France and also
+     Air Freight NZ), so every candidate is tried. */
+  function viaIcao(sp) {
+    return fetchJSON(ADSBDB_AIRLINE + encodeURIComponent(sp.prefix), 20000).then(function (d) {
+      const lines = (d && d.response) || [];
+      const codes = [];
+      lines.forEach(function (a) {
+        if (a && a.icao && a.icao !== sp.prefix && codes.indexOf(a.icao) < 0) codes.push(a.icao);
+      });
+      if (!codes.length) throw new Error('noroute');
+      let inner = Promise.reject(new Error('noroute'));
+      codes.forEach(function (ic) {
+        inner = inner.catch(function () { return tryCallsign(ic + sp.digits); });
+      });
+      return inner;
+    });
+  }
+
+  let chain = tryCallsign(cs);
+  splits.forEach(function (sp) {
+    chain = chain.catch(function () { return viaIcao(sp); });
+  });
+
+  chain.then(function (fr) {
     r.route = {
       at: Date.now(),
       callsign: fr.callsign_iata || fr.callsign || cs,
@@ -4012,6 +4070,45 @@ function lookupFlight(dayId, itemId) {
         'the operating airline instead.'
       : 'The flight database did not answer. Try again in a moment.';
   });
+}
+
+/* Booked time in the air, from the stop's departure to the entered
+   arrival. Returns null unless both are known. */
+function flightMinutes(day, it) {
+  const r = refOf(it);
+  if (!r.arrAt || !it.time) return null;
+  const dep = new Date(day.date + 'T' + it.time);
+  const arr = new Date(r.arrAt);
+  if (!isFinite(dep.getTime()) || !isFinite(arr.getTime())) return null;
+  const min = (arr - dep) / 60000;
+  return min > 0 && min < 60 * 30 ? min : null;
+}
+
+/* "2026-11-04T18:35" as something readable. */
+function fmtDateTime(v) {
+  const d = new Date(v);
+  if (!isFinite(d.getTime())) return String(v || '');
+  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) +
+         ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+
+/* Trackers, with the flight number and the stop's date carried over.
+   Only well-known stable URL shapes - no invented per-airline deep links. */
+function flightStatusLinks(r, day) {
+  const iata = normFlight(r.number);
+  const icao = (r.route && r.route.callsign) ? normFlight(r.route.callsign) : '';
+  const fa = icao && icao !== iata ? icao : iata;
+  const date = day && day.date ? day.date : '';
+  return '<a class="btn btn-sm btn-primary" target="_blank" rel="noopener" href="' +
+           'https://flightaware.com/live/flight/' + encodeURIComponent(fa) +
+           '">\u2197 Status on FlightAware</a>' +
+         '<a class="btn btn-sm" target="_blank" rel="noopener" href="' +
+           'https://www.flightradar24.com/data/flights/' + encodeURIComponent(iata.toLowerCase()) +
+           '">\u2197 Flightradar24</a>' +
+         '<a class="btn btn-sm" target="_blank" rel="noopener" href="' +
+           'https://www.google.com/search?q=' +
+           encodeURIComponent(iata + ' flight status' + (date ? ' ' + date : '')) +
+           '">\u2197 Search' + (date ? ' for ' + esc(date) : '') + '</a>';
 }
 
 /* Jump to the terminal map for one end of the flight. */
@@ -4233,20 +4330,26 @@ function refHtml(day, it) {
     '</div>';
 
   if (isFlight) {
+    const rt = r.route;
     h += '<div class="form-actions">' +
            '<button class="btn btn-sm btn-primary" data-act="ref-flight" data-day="' + day.id +
              '" data-id="' + it.id + '">🔎 Look up flight</button>' +
-           (r.number
-             ? '<a class="btn btn-sm" target="_blank" rel="noopener" href="' +
-               'https://www.google.com/search?q=' + encodeURIComponent(r.number + ' flight status') +
-               '">\u2197 Live status</a>' : '') +
          '</div>';
-    const rt = r.route;
+
+    /* Where it goes, from the flight number. */
     if (rt) {
-      h += '<div class="card-note"><b>' + esc(rt.callsign) + '</b>' +
-           (rt.airline ? ' \u00b7 ' + esc(rt.airline) : '') + '<br>' +
-           esc(rt.from.name || rt.from.code) + ' <b>' + esc(rt.from.code) + '</b>' +
-           ' \u2192 ' + esc(rt.to.name || rt.to.code) + ' <b>' + esc(rt.to.code) + '</b></div>' +
+      h += '<div class="flight-ends">' +
+             '<div><div class="fe-code">' + esc(rt.from.code) + '</div>' +
+               '<div class="card-note">' + esc(rt.from.city || rt.from.name) +
+               (r.depTerm ? ' \u00b7 Terminal ' + esc(r.depTerm) : '') + '</div></div>' +
+             '<div class="fe-arrow">\u2192</div>' +
+             '<div><div class="fe-code">' + esc(rt.to.code) + '</div>' +
+               '<div class="card-note">' + esc(rt.to.city || rt.to.name) +
+               (r.arrTerm ? ' \u00b7 Terminal ' + esc(r.arrTerm) : '') + '</div></div>' +
+             '<div class="spacer"></div>' +
+             '<div class="card-note" style="text-align:right">' + esc(rt.callsign) +
+               (rt.airline ? '<br>' + esc(rt.airline) : '') + '</div>' +
+           '</div>' +
            '<div class="form-actions">' +
              '<button class="btn btn-sm" data-act="ref-fac" data-name="' + esc(rt.from.name || rt.from.city) +
                '">🛫 Terminal map: ' + esc(rt.from.code) + '</button>' +
@@ -4254,9 +4357,42 @@ function refHtml(day, it) {
                '">🛬 Terminal map: ' + esc(rt.to.code) + '</button>' +
            '</div>';
     }
-    h += '<div class="card-note">Airline and airports come from an open flight-route database, so the ' +
-         'flight number alone is enough. There are no departure times or gates in it, and no keyless ' +
-         'live-flight feed will answer a browser \u2014 use the status link for those.</div>';
+
+    /* When it goes. The stop's own time is the departure; a long haul
+       lands on another date, so arrival carries its own. */
+    h += '<div class="ref-grid">' +
+           '<label class="fl-field"><span class="card-note">Departs</span>' +
+             '<input class="inp" type="time" data-act="item-time" data-day="' + day.id +
+               '" data-id="' + it.id + '" value="' + esc(it.time || '') + '"></label>' +
+           '<label class="fl-field"><span class="card-note">Arrives (local)</span>' +
+             '<input class="inp" type="datetime-local" data-act="ref-field" data-day="' + day.id +
+               '" data-id="' + it.id + '" data-field="arrAt" value="' + esc(r.arrAt || '') + '"></label>' +
+         '</div>' +
+         '<div class="ref-grid">' +
+           '<input class="inp" data-act="ref-field" data-day="' + day.id + '" data-id="' + it.id +
+             '" data-field="depTerm" value="' + esc(r.depTerm || '') +
+             '" placeholder="Departure terminal / gate" autocomplete="off">' +
+           '<input class="inp" data-act="ref-field" data-day="' + day.id + '" data-id="' + it.id +
+             '" data-field="arrTerm" value="' + esc(r.arrTerm || '') +
+             '" placeholder="Arrival terminal / gate" autocomplete="off">' +
+         '</div>';
+    if (r.arrAt) {
+      const flyMin = flightMinutes(day, it);
+      h += '<div class="card-note">Lands ' + esc(fmtDateTime(r.arrAt)) +
+           (flyMin !== null ? ' \u00b7 ' + esc(fmtMin(flyMin)) + ' in the air, as booked' : '') +
+           '</div>';
+    }
+
+    /* Whether it is running late: one tap out, carrying the number and
+       the date. Nothing keyless answers a browser for this. */
+    if (r.number) {
+      h += '<div class="form-actions">' + flightStatusLinks(r, day) + '</div>';
+    }
+    h += '<div class="card-note">Airline and both airports come from an open route database, so the ' +
+         'flight number alone is enough. <b>Times and running status are not in it</b>, and every ' +
+         'keyless live-flight feed either refuses browser requests or needs a paid key \u2014 so the ' +
+         'times above are the ones off your booking, and the status buttons go to a tracker with the ' +
+         'flight and date already filled in.</div>';
   } else {
     h += '<input class="inp" data-act="ref-field" data-day="' + day.id + '" data-id="' + it.id +
          '" data-field="station" value="' + esc(r.station) + '" placeholder="Departs from \u2014 e.g. Paris Gare de l\u2019Est" autocomplete="off">' +
@@ -5382,7 +5518,13 @@ document.addEventListener('change', function (ev) {
       const lk = byId('ref-lock-' + i0.id);
       if (lk) { lk.innerHTML = ''; lk.hidden = true; }
     }
-    if (f === 'number') i0.live = null;
+    if (f === 'number') {
+      i0.live = null;
+      /* The route belongs to the old number: leaving it up showed Paris
+         to Berlin, with status links for the wrong flight. */
+      refOf(i0).route = null;
+      if (refOf(i0).kind === 'flight') renderSchedule();
+    }
     save();
     /* Changing the kind swaps the whole block; the text fields must not
        rebuild under the cursor. */
@@ -5604,10 +5746,17 @@ function wire() {
     const el = ev.target;
     if (!el || !el.getAttribute) return;
     const a = el.getAttribute('data-act');
-    if (a !== 'item-time' && a !== 'item-dur') return;
-    const to = ev.relatedTarget;
-    const na = (to && to.getAttribute) ? to.getAttribute('data-act') : null;
-    if (na === 'item-time' || na === 'item-dur') return;
+    const FLIGHT_FIELDS = { arrAt: 1, depTerm: 1, arrTerm: 1 };
+    const isDeferred = function (node) {
+      if (!node || !node.getAttribute) return false;
+      const act = node.getAttribute('data-act');
+      if (act === 'item-time' || act === 'item-dur') return true;
+      /* A flight's arrival and terminals are read back into the block it
+         is typed in, so they need the same treatment. */
+      return act === 'ref-field' && !!FLIGHT_FIELDS[node.getAttribute('data-field')];
+    };
+    if (!isDeferred(el)) return;
+    if (isDeferred(ev.relatedTarget)) return;
     /* Not here: rebuilding the card while the browser is still processing
        the blur throws NotFoundError as it tries to move the node that is
        losing focus. One tick later the DOM is settled. */
