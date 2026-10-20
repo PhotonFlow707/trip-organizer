@@ -451,6 +451,29 @@ tr.routing td { opacity: .65; }
 .leg-bar::before { content: ''; position: absolute; left: 12px; top: 0; bottom: 0; width: 1px; background: repeating-linear-gradient(180deg, var(--border-strong) 0 3px, transparent 3px 7px); }
 .leg-bar select { width: auto; padding: 3px 22px 3px 7px; font-size: .7rem; background-position: calc(100% - 13px) 52%, calc(100% - 8px) 52%; }
 .leg-txt { font-variant-numeric: tabular-nums; }
+.dir-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px;
+             font-size: .76rem; line-height: 1.45; }
+.dir-list li::marker { color: var(--text-3); font-size: .7rem; }
+#fac-list .chip-row { margin-bottom: var(--sp-sm); }
+.fac-walk { display: flex; gap: var(--sp-xs); align-items: center; margin-top: var(--sp-sm); }
+.fac-walk .inp { flex: 1; min-width: 0; }
+.fac-walk .fac-arrow { color: var(--text-3); flex: none; }
+#fac-route { margin-top: var(--sp-sm); }
+#fac-route .fac-sum { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
+  margin-bottom: var(--sp-xs); }
+#fac-route .fac-sum .mono { color: var(--text-1); font-weight: 600; }
+#fac-list .chip { cursor: pointer; }
+.ref-box > summary { gap: 6px; }
+.ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-sm); }
+.ref-box .inp { font-size: .78rem; }
+.live-badge {
+  font-size: .6rem; font-weight: 700; letter-spacing: .03em; padding: 1px 7px;
+  border-radius: 99px; white-space: nowrap;
+}
+.live-ok { color: var(--emerald-light); background: rgba(16,185,129,.16); border: 1px solid var(--border-active); }
+.live-late { color: #fcd34d; background: var(--amber-glow); border: 1px solid rgba(245,158,11,.3); }
+.live-bad { color: #fca5a5; background: rgba(239,68,68,.14); border: 1px solid rgba(239,68,68,.35); }
+.live-unknown { color: var(--text-3); background: var(--bg-hover); border: 1px solid var(--border); }
 .att-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 .att {
   display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
@@ -512,6 +535,10 @@ details.box > summary:hover { color: var(--text-1); }
   .hdr-actions { order: 4; width: 100%; }
   .hdr-actions .btn { flex: 1; justify-content: center; padding: 10px 8px; }
 
+  /* Nothing may scroll sideways. `clip` rather than `hidden`: hidden
+     turns the body into a scroll container and breaks the sticky map. */
+  body { overflow-x: clip; }
+
   /* The map stays put while the schedule scrolls under it — the same
      relationship the desktop two-column layout gives you. A single-column
      GRID gives each item its own row, so a sticky item has nothing to
@@ -520,17 +547,52 @@ details.box > summary:hover { color: var(--text-1); }
      rather than stealing height from the map and the schedule. */
   .app-header { position: static; }
   .layout { display: flex; flex-direction: column; gap: var(--sp-sm); }
-  .col-right {
-    order: -1;
+
+  /* `display: contents` dissolves the right-hand column so the map and
+     the focused day become siblings of the schedule — only the map pins,
+     and the day sits directly beneath it, above the full schedule. */
+  .col-right { display: contents; }
+  /* Dissolving the column promoted these to flex items, and a flex item
+     defaults to min-width:auto — the focused-day rail's full content then
+     sets the page width. This is what keeps the page from scrolling
+     sideways; the rail scrolls inside itself instead. */
+  /* width:100% as well as min-width:0 — stretching alone let the card
+     size to the rail's full content (634px inside a 478px column), which
+     is what was pushing the page sideways. */
+  .map-card, #focus-card { min-width: 0; width: 100%; max-width: 100%; }
+  .map-card {
+    order: -2;
     position: sticky;
     top: 0;
     z-index: 600;
     background: var(--bg-base);
   }
+  #focus-card { order: -1; }
+  /* max-width, not just min-width: 0. A flex item's min-content
+     contribution is clamped by max-width but NOT reduced by min-width: 0,
+     so one nowrap line deep inside a panel (the coordinates on a place
+     row) was widening this column to 426px inside a 350px screen and the
+     whole page scrolled sideways with it. Capped, .pin-meta ellipsises as
+     it was always meant to. `flex: 1 1 0px` on .pin-main does NOT fix it
+     — measured. */
+  .col-left { order: 0; min-width: 0; max-width: 100%; }
   #map { height: 34vh; }
   .map-card .card-head { padding: 8px var(--sp-md); }
-  /* The rail repeats the schedule you are already reading. */
-  #focus-card { display: none; }
+  .focus-rail { padding-top: 4px; }
+  .focus-stop { min-width: 136px; }
+
+  /* Wide-ish rows that would otherwise push the page sideways. */
+  .hdr-trip { min-width: 0; }
+  .hdr-trip .inp { max-width: 44vw; }
+  .tbl th, .tbl td { padding: 8px 5px; font-size: .74rem; }
+  .tbl .num { white-space: normal; }
+  .tbl .mode-cell { gap: 5px; }
+  .tbl .mode-cell span { white-space: normal; }
+  .tag-best { display: inline-block; margin-left: 0; }
+  .city-row { flex-wrap: wrap; }
+  .city-row .inp[data-field="name"] { flex: 1 1 100%; order: -1; }
+  .city-counts { flex: 1; }
+  .att-name { max-width: 46vw; }
 
   .map-foot { padding: 10px var(--sp-md); }
   .panel-tab { padding: 11px 4px; }
@@ -648,6 +710,29 @@ details.box > summary:hover { color: var(--text-1); }
             <button class="btn" id="btn-pin-clear">Clear</button>
           </div>
           <div class="status" id="pin-status"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Airport &amp; station facilities</span></div>
+        <div class="card-body">
+          <div class="card-note">
+            Terminals, gates and platforms as mapped in OpenStreetMap. Walk between any two of them
+            below, and add the ones you want to keep as places.
+          </div>
+          <div class="geo-row">
+            <input class="inp" id="fac-q" placeholder="Charles de Gaulle, or Paris Gare de l&#39;Est" autocomplete="off">
+            <button class="btn" id="btn-fac-find">⌖ Find</button>
+          </div>
+          <div class="status" id="fac-status"></div>
+          <div class="fac-walk" id="fac-walk" hidden>
+            <select class="inp" id="fac-a"></select>
+            <span class="fac-arrow">→</span>
+            <select class="inp" id="fac-b"></select>
+            <button class="btn" id="btn-fac-walk">🚶 Walk it</button>
+          </div>
+          <div id="fac-route"></div>
+          <div id="fac-list"></div>
         </div>
       </div>
 
@@ -782,7 +867,7 @@ details.box > summary:hover { color: var(--text-1); }
         <div class="card-head"><span class="card-title">Trip notes</span></div>
         <div class="card-body">
           <textarea class="inp" id="nt-trip" style="min-height:110px"
-            placeholder="Flight numbers, passport details, who to call, budget\u2026"></textarea>
+            placeholder="Flight numbers, passport details, who to call, budget…"></textarea>
           <div class="card-note">Notes for a single stop belong on that stop, in the Schedule.</div>
         </div>
       </div>
@@ -1244,6 +1329,21 @@ function normalize(raw) {
             dur: isFinite(dur) && dur >= 0 ? dur : 60,
             mode: MODE_ORDER.indexOf(it.mode) >= 0 ? it.mode : 'walk',
             notes: String(it.notes == null ? '' : it.notes),
+            ref: (function (r) {
+              r = r || {};
+              return { kind: ['train', 'bus', 'flight', 'ferry', 'other'].indexOf(r.kind) >= 0 ? r.kind : 'train',
+                       number: String(r.number || ''), code: String(r.code || ''),
+                       seat: String(r.seat || ''), station: String(r.station || ''),
+                       stopId: String(r.stopId || '') };
+            })(it.ref),
+            live: (it.live && typeof it.live === 'object') ? {
+              at: isFinite(it.live.at) ? it.live.at : 0,
+              status: String(it.live.status || ''), delayMin: isFinite(it.live.delayMin) ? it.live.delayMin : 0,
+              realTime: !!it.live.realTime, depart: String(it.live.depart || ''),
+              scheduledDepart: String(it.live.scheduledDepart || ''),
+              headsign: String(it.live.headsign || ''), routeName: String(it.live.routeName || ''),
+              tripId: String(it.live.tripId || ''), stopName: String(it.live.stopName || '')
+            } : null,
             files: Array.isArray(it.files) ? it.files.filter(function (f) {
               return f && typeof f.path === 'string' && f.path;
             }).map(function (f) {
@@ -2288,13 +2388,21 @@ function fetchJSON(url, ms) {
 function streetRoute(mode, a, b) {
   const url = OSRM_BASE + OSRM_PROFILE[mode] + '/route/v1/driving/' +
     a[1].toFixed(6) + ',' + a[0].toFixed(6) + ';' + b[1].toFixed(6) + ',' + b[0].toFixed(6) +
-    '?overview=full&geometries=geojson';
+    '?overview=full&geometries=geojson&steps=true';
   return fetchJSON(url).then(function (d) {
     const r = d.routes && d.routes[0];
     if (!r || !r.geometry || !r.geometry.coordinates.length) throw new Error('no route');
     /* GeoJSON is lon,lat; Leaflet wants lat,lng. */
     const coords = r.geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
+    const steps = ((r.legs && r.legs[0] && r.legs[0].steps) || []).filter(function (x) {
+      if (!x) return false;
+      /* OSRM's last step is always 0 m, so keep it or the list never
+         tells you that you have arrived. */
+      if (x.maneuver && x.maneuver.type === 'arrive') return true;
+      return x.distance >= 5;             /* drop the shuffle-sized ones */
+    });
     return { kind: 'street', mode: mode, km: r.distance / 1000, min: r.duration / 60,
+             steps: steps,
              legs: [{ kind: mode, coords: coords, min: r.duration / 60 }] };
   });
 }
@@ -2438,6 +2546,14 @@ function renderRoutePanel() {
       (leg.toName ? ' to <b>' + esc(leg.toName) + '</b>' : '') + '</div></div>';
   }).join('') + '</div>';
 
+  if (r.steps && r.steps.length) {
+    h += '<details class="box"><summary>🧭 Directions \u00b7 ' + r.steps.length + ' steps</summary>' +
+         '<div class="box-body"><ol class="dir-list">' +
+         r.steps.map(function (st) {
+           return '<li>' + esc(stepText(st)) +
+                  (st.distance ? ' <span class="card-note">' + fmtKm(st.distance / 1000) + '</span>' : '') + '</li>';
+         }).join('') + '</ol></div></details>';
+  }
   h += '<div class="card-note">' + esc(r.fromLabel) + ' → ' + esc(r.toLabel) + '. ' +
        (r.kind === 'transit'
          ? 'Timetable and lines from Transitous; a real journey planner for the city is still the last word before you travel.' +
@@ -2716,6 +2832,7 @@ function renderSchedule() {
                  '" value="' + esc(it.place) + '" placeholder="Lunch somewhere on Carrer de Blai…">' : '') +
                '<textarea class="inp" style="min-height:44px" data-act="item-notes" data-day="' + day.id + '" data-id="' + it.id +
                  '" placeholder="Notes: booking ref, who you are meeting, what to order, cost…">' + esc(it.notes) + '</textarea>' +
+               refHtml(day, it) +
                attListHtml(day, it) +
              '</div>' +
            '</div>';
@@ -2940,7 +3057,10 @@ function renderFocus() {
   }
 
   queueLegRoutes(day, c);          /* fills in the line names in the background */
-  let h = '<div class="focus-rail">';
+  /* On a touch screen nothing hovers, so the rail has to say what it is. */
+  let h = '<div class="card-note" style="padding:0 var(--sp-md) 2px">' +
+          'Tap a stop to find it on the map \u00b7 tap a leg for its route</div>';
+  h += '<div class="focus-rail">';
   c.rows.forEach(function (r, i) {
     if (i > 0) {
       const k = legKey(day, r.it, r.depart);
@@ -2972,6 +3092,9 @@ function renderFocus() {
            '<div class="fs-time"><span class="num-badge">' + r.n + '</span>' +
            (r.it.time ? esc(r.it.time) : (r.start !== null ? minToHHMM(r.start) : '--:--')) + '</div>' +
            '<div class="fs-name">' + cat.icon + ' ' + esc(itemLabel(day, r.it)) + '</div>' +
+           (r.it.live && r.it.live.status === 'found'
+             ? '<div class="fs-note"><span class="live-badge ' + liveClass(r.it.live) + '">' +
+               esc(liveLabel(r.it.live)) + '</span> ' + esc(r.it.ref ? r.it.ref.number : '') + '</div>' : '') +
            ((r.it.files && r.it.files.length)
              ? '<div class="fs-note">📎 ' + r.it.files.length +
                (r.it.files.length === 1 ? ' file' : ' files') + '</div>' : '') +
@@ -3423,6 +3546,597 @@ function attListHtml(day, it) {
   return h;
 }
 
+
+/* ─── 7e. TICKETS AND LIVE RUNNING INFORMATION ──────────────────── */
+
+/* What a reference number can honestly buy you:
+
+   TRAINS, BUSES, TRAMS, METROS — Transitous publishes departure boards
+   built from the operators' own GTFS and GTFS-RT feeds, keyless and
+   CORS-open. A service number plus a station and a date resolves to that
+   departure, and where the operator publishes real-time data it carries
+   the actual time against the scheduled one. Measured at Berlin Hbf, 25
+   of 26 departures were live; at Paris Gare de l'Est, 22 of 25.
+
+   FLIGHTS — there is no equivalent. Every keyless flight feed either
+   sends no CORS header at all (adsb.lol, adsb.fi) or allows only its own
+   origin (OpenSky), so a page like this one cannot read them, and the
+   schedule/gate/delay services all require a paid key and a server to
+   keep it secret. A flight's details are therefore stored and shown, with
+   one tap out to a tracker — not invented.
+
+   BOOKING REFERENCES — a PNR is meaningless without the airline's own
+   authenticated system. It is kept here so it is on your phone when you
+   need to read it out, and nothing more is claimed. */
+
+const TRANSITOUS = 'https://api.transitous.org/api/v1/';
+
+function refOf(it) {
+  if (!it.ref) it.ref = { kind: 'train', number: '', code: '', seat: '', station: '', stopId: '' };
+  return it.ref;
+}
+
+/* "TER 86022", "ter86022" and "86022" are the same service. */
+function normNum(v) { return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
+function numbersMatch(entered, candidate) {
+  const a = normNum(entered), b = normNum(candidate);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  /* An entered "86022" should match a route called "TER 86022". */
+  return (a.length >= 3 && b.indexOf(a) >= 0) || (b.length >= 3 && a.indexOf(b) >= 0);
+}
+
+/* What a stop actually serves, as the feed labels it. */
+const MODE_WORDS = {
+  HIGHSPEED_RAIL: 'high-speed rail', LONG_DISTANCE: 'long-distance rail',
+  NIGHT_RAIL: 'night train', REGIONAL_FAST_RAIL: 'fast regional rail',
+  REGIONAL_RAIL: 'regional rail', RAIL: 'rail', METRO: 'metro', SUBWAY: 'metro',
+  TRAM: 'tram', BUS: 'bus', COACH: 'coach', FERRY: 'ferry',
+  AIRPLANE: 'air', FUNICULAR: 'funicular', CABLE_CAR: 'cable car',
+  AREAL_LIFT: 'cable car', OTHER: 'other'
+};
+
+/* The feed id is prefixed to every stop id, and it is the only thing that
+   distinguishes two stops of the same name run by different operators. */
+function stopFeed(id) {
+  const raw = String(id || '').split('_')[0].replace(/^[a-z]{2}-/, '');
+  if (!raw) return '';
+  const words = raw.replace(/-/g, ' ').trim();
+  return words.length > 40 ? words.slice(0, 40) + '\u2026' : words;
+}
+
+function stopModeText(x) {
+  const ms = (x && x.modes) || [];
+  const seen = {}, words = [];
+  ms.forEach(function (m) {
+    const w = MODE_WORDS[m] || String(m).toLowerCase().replace(/_/g, ' ');
+    if (seen[w]) return;
+    seen[w] = true;
+    words.push(w);
+  });
+  return words.slice(0, 4).join(', ');
+}
+
+/* How well a stop suits a ticket of this kind. 2 is what the ticket is
+   for, 1 is near enough to be worth offering, 0 is neither. Mainline rail
+   has to outrank the tram stop outside the station or the ranking does
+   nothing where it matters most. */
+const KIND_MODES = {
+  train: { HIGHSPEED_RAIL: 2, LONG_DISTANCE: 2, NIGHT_RAIL: 2, REGIONAL_FAST_RAIL: 2,
+           REGIONAL_RAIL: 2, RAIL: 2, METRO: 1, SUBWAY: 1, TRAM: 1 },
+  bus: { BUS: 2, COACH: 2, TRAM: 1 },
+  ferry: { FERRY: 2 },
+  flight: { AIRPLANE: 2 },
+  other: {}
+};
+
+function stopKindScore(x, kind) {
+  const want = KIND_MODES[kind] || {};
+  const ms = (x && x.modes) || [];
+  let best = 0;
+  for (let i = 0; i < ms.length; i++) best = Math.max(best, want[ms[i]] || 0);
+  return best;
+}
+
+/* Only the primary modes earn the badge; a tram stop is not where a TER
+   leaves from, even though it is worth listing. */
+function stopServesKind(x, kind) { return stopKindScore(x, kind) >= 2; }
+
+function tsStops(q, kind) {
+  return fetchJSON(TRANSITOUS + 'geocode?text=' + encodeURIComponent(q), 15000)
+    .then(function (list) {
+      const stops = (list || []).filter(function (x) { return x && x.type === 'STOP'; });
+      if (!kind || !Object.keys(KIND_MODES[kind] || {}).length) return stops;
+      /* A train ticket wants the rail station, not the bus stop outside it.
+         Stable within each score, so the feed's own ranking survives. */
+      return stops.map(function (x, i) { return { x: x, i: i, s: stopKindScore(x, kind) }; })
+        .sort(function (a, b) { return b.s - a.s || a.i - b.i; })
+        .map(function (e) { return e.x; });
+    });
+}
+
+function tsDepartures(stopId, whenISO, n) {
+  return fetchJSON(TRANSITOUS + 'stoptimes?stopId=' + encodeURIComponent(stopId) +
+                   '&time=' + encodeURIComponent(whenISO) + '&n=' + (n || 60), 25000);
+}
+
+function minsBetween(aIso, bIso) {
+  const a = new Date(aIso), b = new Date(bIso);
+  if (!isFinite(a.getTime()) || !isFinite(b.getTime())) return 0;
+  return Math.round((a - b) / 60000);
+}
+
+function liveLabel(live) {
+  if (!live) return '';
+  if (live.status === 'cancelled') return 'Cancelled';
+  if (live.status === 'notfound') return 'Not found';
+  if (!live.realTime) return 'Timetabled';
+  if (live.delayMin > 0) return '+' + live.delayMin + ' min';
+  if (live.delayMin < 0) return live.delayMin + ' min';
+  return 'On time';
+}
+
+function liveClass(live) {
+  if (!live) return '';
+  if (live.status === 'cancelled') return 'live-bad';
+  if (live.status === 'notfound') return 'live-unknown';
+  if (!live.realTime) return 'live-unknown';
+  return live.delayMin > 2 ? 'live-late' : 'live-ok';
+}
+
+/* Look the service up: the station the user named, around the time the
+   stop is scheduled for, on the day being planned. */
+function checkService(dayId, itemId) {
+  const day = dayById(dayId);
+  if (!day) return;
+  const it = (day.items || []).filter(function (x) { return x.id === itemId; })[0];
+  if (!it) return;
+  const r = refOf(it);
+  const st = byId('ref-status-' + it.id);
+
+  if (r.kind === 'flight') {
+    if (st) st.innerHTML = 'Live flight data needs a paid service — use the tracker link below.';
+    return;
+  }
+  if (!r.number) { if (st) { st.textContent = 'Enter the service number first.'; st.classList.add('err'); } return; }
+  if (!r.station) { if (st) { st.textContent = 'Name the station it departs from, so it can be found.'; st.classList.add('err'); } return; }
+
+  const comp = dayComputed(day);
+  const row = comp.rows.filter(function (x) { return x.it.id === it.id; })[0];
+  const mins = row && row.start !== null ? row.start : 9 * 60;
+  const when = legDepartISO(day, Math.max(0, mins - 60));
+  if (!when) return;
+
+  if (st) { st.classList.remove('err'); st.textContent = 'Looking up ' + r.number + '…'; }
+
+  /* An exact stop the user picked beats any name search: "Gare de
+     Nancy-Ville" otherwise fuzzy-matched to "Gare de Nice-Ville". */
+  const resolve = r.stopId
+    ? Promise.resolve([{ id: r.stopId, name: r.station }])
+    : tsStops(r.station, r.kind);
+
+  resolve.then(function (stops) {
+    if (!stops.length) throw new Error('nostation');
+    const tries = stops.slice(0, 3);
+    let chain = Promise.reject(new Error('start'));
+    tries.forEach(function (stop) {
+      chain = chain.catch(function () {
+        return tsDepartures(stop.id, when.iso, 120).then(function (d) {
+          const hits = (d.stopTimes || []).filter(function (x) {
+            return numbersMatch(r.number, x.tripShortName) || numbersMatch(r.number, x.routeShortName);
+          });
+          if (!hits.length) throw new Error('nomatch');
+          /* A number can run more than once a day; take the departure
+             closest to the time this stop is planned for. */
+          const want = new Date(legDepartISO(day, mins).iso).getTime();
+          hits.sort(function (a, b) {
+            const ta = new Date((a.place || {}).scheduledDeparture || (a.place || {}).departure || 0).getTime();
+            const tb = new Date((b.place || {}).scheduledDeparture || (b.place || {}).departure || 0).getTime();
+            return Math.abs(ta - want) - Math.abs(tb - want);
+          });
+          return { hit: hits[0], stop: stop, alternatives: hits.length };
+        });
+      });
+    });
+    return chain;
+  }).then(function (found) {
+    const h = found.hit, p = h.place || {};
+    const delay = (p.departure && p.scheduledDeparture) ? minsBetween(p.departure, p.scheduledDeparture) : 0;
+    it.live = {
+      at: Date.now(),
+      status: (h.cancelled || h.tripCancelled) ? 'cancelled' : 'found',
+      delayMin: delay,
+      realTime: !!h.realTime,
+      depart: p.departure || '',
+      scheduledDepart: p.scheduledDeparture || '',
+      headsign: h.headsign || '',
+      routeName: h.routeShortName || h.tripShortName || r.number,
+      tripId: h.tripId || '',
+      stopName: (p.name || found.stop.name || r.station),
+      alternatives: found.alternatives || 1
+    };
+    /* Remember the stop that actually answered, so the next check is exact. */
+    if (!r.stopId && found.stop && found.stop.id) { r.stopId = found.stop.id; r.station = found.stop.name || r.station; }
+    save();
+    renderSchedule(); renderFocus();
+    toast(r.number + ': ' + liveLabel(it.live) + (it.live.headsign ? ' towards ' + it.live.headsign : ''));
+  }).catch(function (e) {
+    const m = String((e && e.message) || e);
+    it.live = { at: Date.now(), status: 'notfound', delayMin: 0, realTime: false,
+                depart: '', scheduledDepart: '', headsign: '', routeName: '', tripId: '',
+                stopName: r.station };
+    save();
+    renderSchedule();
+    const el = byId('ref-status-' + it.id);
+    if (el) {
+      el.classList.add('err');
+      el.textContent = m === 'nostation'
+        ? 'No station matched “' + r.station + '”. Try the full name, e.g. “Paris Gare de l\u2019Est”.'
+        : m === 'nomatch'
+          ? 'No service “' + r.number + '” leaving ' + r.station + ' near that time. Check the number, the station and the date.'
+          : 'Could not reach the timetable service. Your booking details are saved.';
+    }
+  });
+}
+
+/* Draw the service's own route, from the operator's shape. */
+function showServiceOnMap(dayId, itemId) {
+  const day = dayById(dayId);
+  const it = day ? (day.items || []).filter(function (x) { return x.id === itemId; })[0] : null;
+  if (!it || !it.live || !it.live.tripId) return;
+  toast('Fetching the route for ' + (it.live.routeName || 'this service') + '…');
+  fetchJSON(TRANSITOUS + 'trip?tripId=' + encodeURIComponent(it.live.tripId), 25000)
+    .then(function (d) {
+      const legs = (d.legs || []).filter(function (l) { return l.legGeometry && l.legGeometry.points; });
+      if (!legs.length) throw new Error('nogeometry');
+      const route = {
+        kind: 'transit', mode: 'rail', min: (d.duration || 0) / 60, km: 0,
+        fromLabel: it.live.stopName || '', toLabel: it.live.headsign || '',
+        legs: legs.map(function (l) {
+          const g = l.legGeometry;
+          return { kind: l.mode === 'WALK' ? 'connect' : 'transit', vehicle: l.mode,
+                   line: l.routeShortName || l.tripShortName || '',
+                   color: /^[0-9a-fA-F]{6}$/.test(l.routeColor || '') ? '#' + l.routeColor : null,
+                   agency: l.agencyName || '', headsign: l.headsign || '',
+                   fromName: (l.from && l.from.name) || '', toName: (l.to && l.to.name) || '',
+                   start: l.startTime, end: l.endTime, min: (l.duration || 0) / 60,
+                   coords: decodePolyline(g.points, g.precision || 7) };
+        })
+      };
+      route.legs.forEach(function (l) { route.km += pathKm(l.coords); });
+      navRoute = route;
+      drawNavRoute(route);
+      renderTravel();
+    })
+    .catch(function () { toast('That service\u2019s route is not available.', true); });
+}
+
+
+/* Let the user nail the station down once; every later check is exact. */
+function pickStation(dayId, itemId) {
+  const day = dayById(dayId);
+  const it = day ? (day.items || []).filter(function (x) { return x.id === itemId; })[0] : null;
+  if (!it) return;
+  const r = refOf(it);
+  const box = byId('ref-stops-' + it.id), st = byId('ref-status-' + it.id);
+  if (!r.station) { if (st) { st.textContent = 'Type part of the station name first.'; st.classList.add('err'); } return; }
+  box.classList.remove('hidden');
+  box.innerHTML = '<div class="search-item">Searching stops\u2026</div>';
+  tsStops(r.station, r.kind).then(function (stops) {
+    if (!stops.length) {
+      box.innerHTML = '<div class="search-item">No stop matched that name. Mainline stations are often ' +
+        'listed under a shorter name \u2014 "Paris Est" rather than "Paris Gare de l\u2019Est".</div>';
+      return;
+    }
+    box.innerHTML = stops.slice(0, 10).map(function (x) {
+      const serves = stopModeText(x), feed = stopFeed(x.id);
+      return '<div class="search-item" data-act="ref-stop-pick" data-day="' + day.id + '" data-id="' + it.id +
+             '" data-stopid="' + esc(x.id) + '" data-name="' + esc(x.name) + '">' +
+             '<div>' + esc(x.name) +
+             (stopServesKind(x, r.kind) ? ' <span class="tag-best">serves your ' + esc(r.kind) + '</span>' : '') +
+             '</div>' +
+             '<div class="si-sub">' + esc([serves, feed, x.country].filter(Boolean).join(' \u00b7 ')) +
+             '</div></div>';
+    }).join('');
+  }, function () {
+    box.innerHTML = '<div class="search-item">Stop search needs the web.</div>';
+  });
+}
+
+function chooseStation(dayId, itemId, stopId, name) {
+  const day = dayById(dayId);
+  const it = day ? (day.items || []).filter(function (x) { return x.id === itemId; })[0] : null;
+  if (!it) return;
+  const r = refOf(it);
+  r.stopId = stopId; r.station = name;
+  it.live = null;
+  save();
+  renderSchedule();
+  toast('Stop set to ' + name + '.');
+}
+
+/* The booking block on a stop. */
+function refHtml(day, it) {
+  const r = refOf(it);
+  const live = it.live;
+  const isFlight = r.kind === 'flight';
+  const filled = r.number || r.code || r.seat;
+  let h = '<details class="box ref-box"' + (filled ? ' open' : '') + '>' +
+    '<summary>🎫 Ticket' + (r.number ? ' \u00b7 ' + esc(r.number) : '') +
+    (live ? ' <span class="live-badge ' + liveClass(live) + '">' + esc(liveLabel(live)) + '</span>' : '') +
+    '</summary><div class="box-body">' +
+    '<div class="ref-grid">' +
+      '<select class="inp" data-act="ref-field" data-day="' + day.id + '" data-id="' + it.id + '" data-field="kind">' +
+        ['train', 'bus', 'flight', 'ferry', 'other'].map(function (k) {
+          return '<option value="' + k + '"' + (r.kind === k ? ' selected' : '') + '>' +
+                 ({ train: '🚆 Train', bus: '🚌 Bus', flight: '\u2708\uFE0F Flight',
+                    ferry: '\u26F4\uFE0F Ferry', other: '🎟\uFE0F Other' })[k] + '</option>';
+        }).join('') +
+      '</select>' +
+      '<input class="inp" data-act="ref-field" data-day="' + day.id + '" data-id="' + it.id +
+        '" data-field="number" value="' + esc(r.number) + '" placeholder="' +
+        (isFlight ? 'AF1234' : 'TER 86022') + '" autocomplete="off">' +
+    '</div>' +
+    '<div class="ref-grid">' +
+      '<input class="inp" data-act="ref-field" data-day="' + day.id + '" data-id="' + it.id +
+        '" data-field="code" value="' + esc(r.code) + '" placeholder="Confirmation code" autocomplete="off">' +
+      '<input class="inp" data-act="ref-field" data-day="' + day.id + '" data-id="' + it.id +
+        '" data-field="seat" value="' + esc(r.seat) + '" placeholder="Coach / seat" autocomplete="off">' +
+    '</div>';
+
+  if (isFlight) {
+    h += '<div class="card-note">A booking code can only be opened by the airline that issued it, and every ' +
+         'keyless live-flight feed refuses browser requests \u2014 so this is kept for reference and checked ' +
+         'outside the app.</div>';
+    if (r.number) {
+      h += '<div class="form-actions"><a class="btn btn-sm" target="_blank" rel="noopener" href="' +
+           'https://www.google.com/search?q=' + encodeURIComponent(r.number + ' flight status') +
+           '">\u2197 Live status for ' + esc(r.number) + '</a></div>';
+    }
+  } else {
+    h += '<input class="inp" data-act="ref-field" data-day="' + day.id + '" data-id="' + it.id +
+         '" data-field="station" value="' + esc(r.station) + '" placeholder="Departs from \u2014 e.g. Paris Gare de l\u2019Est" autocomplete="off">' +
+         '<div class="form-actions">' +
+           '<button class="btn btn-sm" data-act="ref-station" data-day="' + day.id + '" data-id="' + it.id +
+             '">\u2316 Pick exact stop</button>' +
+           '<button class="btn btn-sm btn-primary" data-act="ref-check" data-day="' + day.id + '" data-id="' + it.id +
+             '">Check running status</button>' +
+           (live && live.tripId
+             ? '<button class="btn btn-sm" data-act="ref-map" data-day="' + day.id + '" data-id="' + it.id +
+               '">Show its route</button>' : '') +
+         '</div>';
+    if (live && live.status === 'found') {
+      h += '<div class="card-note">' +
+           (live.realTime
+             ? '<b>Live</b> from the operator: ' + esc(liveLabel(live))
+             : '<b>Timetable only</b> \u2014 this operator publishes no live data') +
+           (live.depart ? ' \u00b7 departs ' + esc(hhmm(live.depart)) : '') +
+           (live.scheduledDepart && live.delayMin ? ' (booked ' + esc(hhmm(live.scheduledDepart)) + ')' : '') +
+           (live.headsign ? ' \u00b7 towards ' + esc(live.headsign) : '') +
+           (live.stopName ? '<br>from ' + esc(live.stopName) : '') +
+           ' \u00b7 checked ' + esc(hhmm(new Date(live.at).toISOString())) +
+           '</div>';
+    }
+  }
+  h += '<div class="search-results hidden" id="ref-stops-' + it.id + '"></div>' +
+       '<div class="card-note" id="ref-lock-' + it.id + '"' + (r.stopId ? '' : ' hidden') + '>' +
+       (r.stopId ? 'Locked to <b>' + esc(r.station) + '</b> \u2014 lookups use this exact stop.' : '') + '</div>' +
+       '<div class="status" id="ref-status-' + it.id + '"></div></div></details>';
+  return h;
+}
+
+
+/* ─── 7f. TERMINALS, GATES AND PLATFORMS ────────────────────────── */
+
+/* Airports and big stations are mapped in OpenStreetMap down to the
+   individual terminal, gate and platform, and the footpaths between them
+   are mapped too — which is what makes "walk from 2E to 2F" answerable.
+   Overpass serves that data keyless and CORS-open; the foot router then
+   gives the actual path and its turns.
+
+   This is open data, not a scrape: a browser cannot read another site's
+   HTML (the same origin policy forbids it), so everything here comes from
+   APIs that publish machine-readable data on purpose. */
+const OVERPASS = 'https://overpass-api.de/api/interpreter';
+
+const FAC_KINDS = [
+  { key: 'terminal', icon: '🛫', label: 'Terminals' },
+  { key: 'gate',     icon: '🚪', label: 'Gates' },
+  { key: 'platform', icon: '🚇', label: 'Platforms' },
+  { key: 'station',  icon: '🚆', label: 'Stations' },
+  { key: 'entrance', icon: '\u27A1\uFE0F', label: 'Entrances' }
+];
+
+function facKindOf(tags) {
+  if (tags.aeroway === 'terminal') return 'terminal';
+  if (tags.aeroway === 'gate') return 'gate';
+  if (tags.public_transport === 'platform' || tags.railway === 'platform') return 'platform';
+  if (tags.railway === 'station' || tags.railway === 'halt' || tags.public_transport === 'station') return 'station';
+  if (tags.railway === 'subway_entrance' || tags.entrance) return 'entrance';
+  return null;
+}
+
+function overpass(query) {
+  return fetch(OVERPASS, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'data=' + encodeURIComponent(query)
+  }).then(function (r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+
+/* Everything the last search turned up, flat, so the walk bar can
+   offer it without asking Overpass again. */
+let facFound = [];
+
+function findFacilities() {
+  const q = byId('fac-q').value.trim();
+  const list = byId('fac-list'), st = byId('fac-status');
+  st.classList.remove('err');
+  if (q.length < 3) { st.textContent = 'Name the airport or station first.'; st.classList.add('err'); return; }
+  st.textContent = 'Locating ' + q + '\u2026';
+  list.innerHTML = '';
+
+  geocode(q, true).then(function (hits) {
+    if (!hits.length) throw new Error('noplace');
+    const h = hits[0];
+    const bb = h.boundingbox;           /* [south, north, west, east] */
+    if (!bb) throw new Error('nobbox');
+    const box = [parseFloat(bb[0]), parseFloat(bb[2]), parseFloat(bb[1]), parseFloat(bb[3])];
+    st.textContent = 'Reading the map of ' + (String(h.display_name || q).split(',')[0]) + '\u2026';
+    const b = box.map(function (v) { return v.toFixed(5); }).join(',');
+    const query = '[out:json][timeout:25];(' +
+      'way["aeroway"="terminal"](' + b + ');' +
+      'relation["aeroway"="terminal"](' + b + ');' +
+      'node["aeroway"="gate"](' + b + ');' +
+      'node["railway"="station"](' + b + ');' +
+      'node["public_transport"="station"](' + b + ');' +
+      'way["public_transport"="platform"](' + b + ');' +
+      'node["public_transport"="platform"](' + b + ');' +
+      'node["railway"="subway_entrance"](' + b + ');' +
+      ');out center tags 400;';
+    return overpass(query).then(function (d) { return { d: d, name: String(h.display_name || q).split(',')[0] }; });
+  }).then(function (res) {
+    const seen = {}, groups = {};
+    (res.d.elements || []).forEach(function (e) {
+      const tags = e.tags || {};
+      const kind = facKindOf(tags);
+      if (!kind) return;
+      const name = tags.name || tags.ref || tags['addr:housename'] || '';
+      if (!name) return;
+      const c = e.center || e;
+      if (!isFinite(c.lat) || !isFinite(c.lon)) return;
+      const key = kind + '|' + name;
+      if (seen[key]) return;
+      seen[key] = true;
+      (groups[kind] = groups[kind] || []).push({ name: name, lat: c.lat, lon: c.lon, kind: kind });
+    });
+    const total = Object.keys(groups).reduce(function (n, k) { return n + groups[k].length; }, 0);
+    if (!total) { st.textContent = 'Nothing mapped inside ' + res.name + '.'; return; }
+    renderFacWalk(groups);
+    st.textContent = total + ' mapped at ' + res.name + ' \u2014 add what you need as places, then route between them.';
+    byId('fac-list').innerHTML = FAC_KINDS.filter(function (k) { return groups[k.key]; }).map(function (k) {
+      const items = groups[k.key].sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { numeric: true }); });
+      return '<div class="cat-group"><div class="cat-group-head">' + k.icon + ' ' + esc(k.label) +
+             '<span class="n">' + items.length + '</span></div>' +
+             '<div class="chip-row">' + items.slice(0, 60).map(function (f) {
+               return '<button class="chip" data-act="fac-add" data-lat="' + f.lat + '" data-lng="' + f.lon +
+                      '" data-name="' + esc(f.name) + '" data-kind="' + k.key + '" title="Add as a place">+ ' +
+                      esc(f.name) + '</button>';
+             }).join('') + '</div></div>';
+    }).join('');
+  }).catch(function (e) {
+    const m = String((e && e.message) || e);
+    st.classList.add('err');
+    st.textContent = m === 'noplace' ? 'Could not find that airport or station.'
+      : m === 'nobbox' ? 'That place has no mapped area to search.'
+      : 'The map service did not answer. Try again in a moment.';
+  });
+}
+
+/* The two selects, grouped by kind so a terminal is easy to find among
+   two hundred gates. Rebuilt with innerHTML, which drops the old option
+   nodes and their listeners with them. */
+function renderFacWalk(groups) {
+  const opts = FAC_KINDS.filter(function (k) { return groups[k.key]; }).map(function (k) {
+    return '<optgroup label="' + esc(k.icon + ' ' + k.label) + '">' +
+      groups[k.key].map(function (f) {
+        return '<option value="' + f.lat + ',' + f.lon + '">' + esc(f.name) + '</option>';
+      }).join('') + '</optgroup>';
+  }).join('');
+  facFound = [];
+  FAC_KINDS.forEach(function (k) {
+    (groups[k.key] || []).forEach(function (f) { facFound.push(f); });
+  });
+  byId('fac-a').innerHTML = opts;
+  byId('fac-b').innerHTML = opts;
+  /* Two different ends, or the first press is a no-op. */
+  const sel = byId('fac-b');
+  if (sel.options.length > 1) sel.selectedIndex = 1;
+  byId('fac-walk').hidden = false;
+  byId('fac-walk').classList.remove('hidden');
+  byId('fac-route').innerHTML = '';
+}
+
+function facPoint(sel) {
+  const v = (sel.value || '').split(',');
+  const la = parseFloat(v[0]), ln = parseFloat(v[1]);
+  if (!isFinite(la) || !isFinite(ln)) return null;
+  return { latlng: [la, ln], label: sel.options[sel.selectedIndex].textContent };
+}
+
+/* A walking route between two mapped facilities, drawn on the map and
+   written out as directions here rather than on the Travel tab — you are
+   looking at the facility list when you ask for it. */
+function walkFacilities() {
+  const a = facPoint(byId('fac-a')), b = facPoint(byId('fac-b'));
+  const out = byId('fac-route');
+  if (!a || !b) { out.innerHTML = '<div class="status err">Pick both ends first.</div>'; return; }
+  if (haversine(a.latlng, b.latlng) < 0.005) {
+    out.innerHTML = '<div class="status err">Those two are the same spot.</div>';
+    return;
+  }
+  if (typeof fetch !== 'function') {
+    out.innerHTML = '<div class="status err">This browser cannot fetch routes.</div>';
+    return;
+  }
+  out.innerHTML = '<div class="status">Walking ' + esc(a.label) + ' → ' + esc(b.label) + '…</div>';
+  streetRoute('walk', a.latlng, b.latlng).then(function (route) {
+    drawNavRoute(route);
+    out.innerHTML =
+      '<div class="fac-sum"><span class="mono">🚶 ' + esc(fmtMin(route.min)) + ' · ' +
+      esc(fmtKm(route.km)) + '</span>' +
+      '<span class="card-note">' + esc(a.label) + ' → ' + esc(b.label) + '</span></div>' +
+      (route.steps && route.steps.length
+        ? '<details class="box" open><summary>🧭 Directions · ' + route.steps.length +
+          ' steps</summary><div class="box-body"><ol class="dir-list">' +
+          route.steps.map(function (st) {
+            return '<li>' + esc(stepText(st)) +
+                   (st.distance ? ' <span class="card-note">' + fmtKm(st.distance / 1000) + '</span>' : '') +
+                   '</li>';
+          }).join('') + '</ol></div></details>'
+        : '<div class="card-note">No step-by-step for this one.</div>') +
+      '<div class="card-note">Footpaths as mapped in OpenStreetMap. Inside a terminal the mapping ' +
+      'is often partial, so treat it as the outdoor walk between buildings.</div>';
+  }).catch(function () {
+    out.innerHTML = '<div class="status err">No walking route between those two — ' +
+      'the footpaths between them may not be mapped.</div>';
+  });
+}
+
+function addFacility(name, lat, lng, kind) {
+  const city = S.cities[S.activeCity];
+  city.pins.push({ id: uid(), name: name, cat: kind === 'terminal' || kind === 'station' ? 'transit' : 'transit',
+                   lat: parseFloat(lat), lng: parseFloat(lng),
+                   addr: kind.charAt(0).toUpperCase() + kind.slice(1), notes: '' });
+  save();
+  renderAll();
+  toast('Added ' + name + '. Route to it from Travel.');
+}
+
+/* OSRM's own words, turned into something you can follow on foot. */
+function stepText(st) {
+  const m = st.maneuver || {};
+  const dir = (m.modifier || '').replace('slight ', 'slightly ').replace('sharp ', 'sharply ');
+  const road = st.name ? ' onto ' + st.name : '';
+  switch (m.type) {
+    case 'depart': return 'Set off' + (st.name ? ' along ' + st.name : '');
+    case 'arrive': return 'Arrive';
+    case 'turn': return 'Turn ' + dir + road;
+    case 'new name': return 'Continue' + road;
+    case 'continue': return 'Continue ' + dir + road;
+    case 'end of road': return 'At the end, turn ' + dir + road;
+    case 'fork': return 'Keep ' + dir + road;
+    case 'roundabout': case 'rotary': return 'Take the roundabout' + road;
+    case 'merge': return 'Merge ' + dir + road;
+    case 'ramp': case 'on ramp': case 'off ramp': return 'Take the ramp' + road;
+    default: return (m.type ? m.type.charAt(0).toUpperCase() + m.type.slice(1) : 'Continue') + ' ' + dir + road;
+  }
+}
+
 /* ─── 7. IO ─────────────────────────────────────────────────────── */
 
 /* Swap in a whole library of trips. */
@@ -3866,6 +4580,13 @@ document.addEventListener('click', function (ev) {
       break;
     }
 
+    case 'ref-check': checkService(dayId, id); break;
+    case 'ref-station': pickStation(dayId, id); break;
+    case 'ref-stop-pick':
+      chooseStation(dayId, id, t.getAttribute('data-stopid'), t.getAttribute('data-name'));
+      break;
+    case 'ref-map': showServiceOnMap(dayId, id); break;
+
     case 'att-add': attPick(dayId, id); break;
     case 'att-open': attOpen(dayId, id, t.getAttribute('data-file')); break;
     case 'att-del': attRemove(dayId, id, t.getAttribute('data-file')); break;
@@ -3935,6 +4656,11 @@ document.addEventListener('click', function (ev) {
       byId('pf-coord-hint').innerHTML = 'Found <b>' + lat.toFixed(5) + ', ' + lng.toFixed(5) + '</b> — check the category and save.';
       break;
     }
+
+    case 'fac-add':
+      addFacility(t.getAttribute('data-name'), t.getAttribute('data-lat'),
+                  t.getAttribute('data-lng'), t.getAttribute('data-kind'));
+      break;
 
     case 'city-pick':
       addCityFromResult({ lat: t.getAttribute('data-lat'), lon: t.getAttribute('data-lng'),
@@ -4039,6 +4765,28 @@ document.addEventListener('change', function (ev) {
   const act = t.getAttribute('data-act');
   const id = t.getAttribute('data-id');
   const dayId = t.getAttribute('data-day');
+
+  if (act === 'ref-field') {
+    const d0 = dayById(t.getAttribute('data-day'));
+    const i0 = d0 ? (d0.items || []).filter(function (x) { return x.id === t.getAttribute('data-id'); })[0] : null;
+    if (!i0) return;
+    const f = t.getAttribute('data-field');
+    refOf(i0)[f] = t.value;
+    if (f === 'station') {
+      refOf(i0).stopId = ''; i0.live = null;                /* re-resolve */
+      /* The block deliberately does not rebuild (see below), so the stale
+         "Locked to" note has to be retired by hand or it contradicts the
+         state it is describing. */
+      const lk = byId('ref-lock-' + i0.id);
+      if (lk) { lk.innerHTML = ''; lk.hidden = true; }
+    }
+    if (f === 'number') i0.live = null;
+    save();
+    /* Changing the kind swaps the whole block; the text fields must not
+       rebuild under the cursor. */
+    if (f === 'kind') renderSchedule();
+    return;
+  }
 
   if (act === 'city-field') {
     const c = S.cities[t.getAttribute('data-city')];
@@ -4274,6 +5022,12 @@ function wire() {
   byId('trip-new-city').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); newTrip(); }
   });
+  byId('btn-fac-find').addEventListener('click', findFacilities);
+  byId('btn-fac-walk').addEventListener('click', walkFacilities);
+  byId('fac-q').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); findFacilities(); }
+  });
+
   byId('btn-city-find').addEventListener('click', findCity);
   byId('city-new').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); findCity(); }
