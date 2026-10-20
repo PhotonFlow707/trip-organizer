@@ -110,7 +110,14 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 .city-tab .cnt { font-size: .68rem; color: var(--text-3); font-weight: 500; }
 .city-tab.active .cnt { color: var(--emerald-light); }
 
-.hdr-actions { display: flex; gap: var(--sp-xs); margin-left: auto; flex-wrap: wrap; }
+/* At the foot of the page now, so no `margin-left: auto` to push it to
+   the end of a header row it no longer sits in. */
+.hdr-actions {
+  display: flex; gap: var(--sp-xs); flex-wrap: wrap; justify-content: center;
+  max-width: 1900px; margin: 0 auto;
+  padding: var(--sp-md) var(--sp-lg) var(--sp-xl);
+  border-top: 1px solid var(--border);
+}
 
 /* ── Buttons ──────────────────────────────────────────────────── */
 .btn {
@@ -151,6 +158,10 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 @media (max-width: 1100px) {
   .layout { grid-template-columns: 1fr; }
   .col-right { position: static; order: -1; }
+  /* The tab bar is a row of the layout now, so it has to be ordered here
+     as well: the map is pulled to the front with order:-1 and would
+     otherwise end up above the tabs that choose what is below it. */
+  .panel-tabs { order: -2; }
 }
 
 /* ── Cards ────────────────────────────────────────────────────── */
@@ -171,7 +182,14 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 .spacer { margin-left: auto; }
 
 /* ── Panel tabs ───────────────────────────────────────────────── */
-.panel-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-xs); margin-bottom: var(--sp-md); }
+/* A full-width row at the top of the layout. The tracks are capped
+   rather than 1fr: stretched across 1900px a four-button bar reads as
+   four billboards. */
+.panel-tabs {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 200px));
+  justify-content: start; gap: var(--sp-xs);
+  grid-column: 1 / -1; margin: 0;
+}
 .panel-tab {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   padding: 9px 4px; border-radius: var(--radius-md); cursor: pointer;
@@ -308,7 +326,6 @@ tr.routing td { opacity: .65; }
 .route-rail { border-left: 2px dotted var(--border-strong); margin-left: 11px; padding-left: 14px;
               display: flex; flex-direction: column; gap: 8px; }
 .tag-cheap { color: var(--sky); background: rgba(56,189,248,.14); }
-.tbl-scroll { max-height: 320px; overflow-y: auto; }
 .clickable { cursor: pointer; }
 
 /* ── Stat strip ───────────────────────────────────────────────── */
@@ -531,23 +548,22 @@ details.box > summary:hover { color: var(--text-1); }
   .hdr-brand { flex: 1 1 auto; }
   .city-tabs { order: 3; width: 100%; }
 
-  /* The working tabs sit in the header on a phone, right under the
-     cities, because that is the order you read the page in: which trip,
-     which city, which view. The node is moved below - `order` cannot
-     interleave children of two different parents. */
-  .panel-tabs { order: 4; width: 100%; margin-bottom: 0; }
+  /* The tab bar is a sibling of the map card in .layout, so ordering it
+     above the map is all this takes - no node has to move. Full width and
+     four even columns on a narrow screen, where the desktop's capped
+     200px tracks would leave it bunched to the left. */
+  .panel-tabs {
+    order: -3; width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
   .panel-tab { padding: 8px 4px; }
   .panel-tab .badge { font-size: .58rem; }
   .city-tab { flex: 1; justify-content: center; padding: 10px 6px; font-size: .78rem; }
   .city-tab .cnt { display: none; }
-  /* Copy, Export and Import are end-of-session actions, not things you
-     reach for while planning, so they live at the foot of the page. */
+  /* The foot is styled in the source now; this only narrows its padding
+     and clears the home-bar inset. */
   .hdr-actions {
-    margin: var(--sp-md) 0 0;
     padding: var(--sp-md) var(--sp-md) calc(var(--sp-lg) + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid var(--border);
-    justify-content: center;
-    width: 100%;
   }
   .hdr-actions .btn { flex: 1 1 auto; justify-content: center; min-width: 0; }
   .hdr-actions .btn { flex: 1; justify-content: center; padding: 10px 8px; }
@@ -652,18 +668,23 @@ details.box > summary:hover { color: var(--text-1); }
 
   <nav class="city-tabs" id="city-tabs"></nav>
 
-    <nav class="panel-tabs" id="panel-tabs">
-      <button class="panel-tab" data-panel="schedule"><span class="ico">🗓️</span><span>Schedule</span><span class="badge" id="badge-schedule">0 days</span></button>
-      <button class="panel-tab" data-panel="travel"><span class="ico">🚆</span><span>Travel</span><span class="badge" id="badge-travel">5 modes</span></button>
-      <button class="panel-tab" data-panel="pins"><span class="ico">📍</span><span>Places</span><span class="badge" id="badge-pins">0</span></button>
-      <button class="panel-tab" data-panel="trip"><span class="ico">🧭</span><span>Trip</span><span class="badge" id="badge-trip">1</span></button>
-    </nav>
-
 </header>
 
 <div id="storage-warn" class="banner hidden"></div>
 
 <main class="layout">
+
+  <!-- Which view, directly under which city: the order the page is read
+       in. A row of the layout rather than a second row of the header,
+       because .col-right sticks at a fixed offset from the header's
+       height and must not be pushed out of place. -->
+  <nav class="panel-tabs" id="panel-tabs">
+    <button class="panel-tab" data-panel="schedule"><span class="ico">🗓️</span><span>Schedule</span><span class="badge" id="badge-schedule">0 days</span></button>
+    <button class="panel-tab" data-panel="travel"><span class="ico">🚆</span><span>Travel</span><span class="badge" id="badge-travel">5 modes</span></button>
+    <button class="panel-tab" data-panel="pins"><span class="ico">📍</span><span>Places</span><span class="badge" id="badge-pins">0</span></button>
+    <button class="panel-tab" data-panel="trip"><span class="ico">🧭</span><span>Trip</span><span class="badge" id="badge-trip">1</span></button>
+  </nav>
+
 
   <!-- ── Left column: the four working panels ──────────────────── -->
   <section class="col-left">
@@ -802,17 +823,6 @@ details.box > summary:hover { color: var(--text-1); }
           <div class="stats" id="tv-stats"></div>
           <table class="tbl" id="tv-table"></table>
           <div class="card-note" id="tv-note"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-head">
-          <span class="card-title">Every place from <span id="tv-base-name">base</span></span>
-          <span class="spacer"></span>
-          <select class="inp btn-sm" id="tv-matrix-mode" style="width:auto"></select>
-        </div>
-        <div class="card-body">
-          <div class="tbl-scroll"><table class="tbl" id="tv-matrix"></table></div>
         </div>
       </div>
 
@@ -1001,12 +1011,14 @@ details.box > summary:hover { color: var(--text-1); }
   </section>
 </main>
 
+<!-- End-of-session actions, not things reached for while planning. -->
   <div class="hdr-actions">
     <button class="btn" id="btn-copy" title="Copy the whole itinerary as plain text">📋 Copy itinerary</button>
     <button class="btn" id="btn-export" title="Download everything as JSON">⬇ Export</button>
     <button class="btn" id="btn-import" title="Load a previously exported JSON file">⬆ Import</button>
     <input type="file" id="file-import" accept=".json,application/json" hidden>
   </div>
+
 <input type="file" id="att-file" hidden>
 
 
@@ -2171,7 +2183,7 @@ function deletePin(id) {
 
 /* ─── 6b. TRAVEL PANEL ──────────────────────────────────────────── */
 
-let tvFrom = '__base', tvTo = '', tvMatrixMode = 'walk';
+let tvFrom = '__base', tvTo = '';
 
 /* A select value resolves to a point: '__base', '__centre' or a pin id. */
 function resolvePoint(val, cityKey) {
@@ -2213,11 +2225,6 @@ function renderTravel() {
   }
   byId('tv-from').innerHTML = pointOptions(tvFrom);
   byId('tv-to').innerHTML = pointOptions(tvTo);
-
-  byId('tv-matrix-mode').innerHTML = MODE_ORDER.map(function (m) {
-    return '<option value="' + m + '"' + (tvMatrixMode === m ? ' selected' : '') + '>' +
-           MODE_ICON[m] + ' ' + esc(modeLabel(m)) + '</option>';
-  }).join('');
 
   const a = resolvePoint(tvFrom), b = resolvePoint(tvTo);
   const statsEl = byId('tv-stats'), tblEl = byId('tv-table'), noteEl = byId('tv-note');
@@ -2280,28 +2287,6 @@ function renderTravel() {
       'network, bus and train come back as a timetabled journey with real lines. Until then the ' +
       'figures are estimates.';
   }
-
-  /* Everything from base, one mode, nearest first. */
-  const origin = baseOrCentre();
-  byId('tv-base-name').textContent = origin.label;
-  const rows = pins.filter(function (p) { return p.id !== origin.id; })
-    .map(function (p) {
-      const l = legFor(origin.latlng, [p.lat, p.lng], tvMatrixMode);
-      return { p: p, l: l, d: l.routeKm };
-    })
-    .sort(function (x, y) { return x.d - y.d; });
-
-  byId('tv-matrix').innerHTML = !rows.length
-    ? '<tbody><tr><td class="empty">Add places to compare them.</td></tr></tbody>'
-    : '<thead><tr><th>Place</th><th class="num">Route</th><th class="num">' + MODE_ICON[tvMatrixMode] + ' Time</th><th class="num">Fare</th></tr></thead><tbody>' +
-      rows.map(function (r) {
-        return '<tr class="clickable" data-act="pin-focus" data-id="' + r.p.id + '">' +
-               '<td><div class="mode-cell" style="font-weight:500">' + (CATS[r.p.cat] || CATS.other).icon +
-               ' <span>' + esc(r.p.name) + '</span></div></td>' +
-               '<td class="num">' + fmtKm(r.l.routeKm) + '</td>' +
-               '<td class="num">' + fmtMin(r.l.min) + '</td>' +
-               '<td class="num">' + fmtMoney(r.l.fare, cur) + '</td></tr>';
-      }).join('') + '</tbody>';
 
   renderRoutePanel();
   renderSettings();
@@ -5565,7 +5550,6 @@ function wire() {
   byId('tv-from').addEventListener('change', function () { tvFrom = this.value; clearNav(); renderTravel(); });
   byId('tv-to').addEventListener('change', function () { tvTo = this.value; clearNav(); renderTravel(); });
   byId('tv-when').addEventListener('change', function () { clearNav(); renderTravel(); });
-  byId('tv-matrix-mode').addEventListener('change', function () { tvMatrixMode = this.value; renderTravel(); });
   byId('btn-swap').addEventListener('click', function () {
     const a = tvFrom; tvFrom = tvTo; tvTo = a; clearNav(); renderTravel();
   });
