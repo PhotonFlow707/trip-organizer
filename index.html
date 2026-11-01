@@ -242,6 +242,14 @@ select.inp {
 }
 .chip:hover { color: var(--text-1); border-color: var(--border-strong); }
 .chip.on { color: var(--text-1); border-color: var(--cat, var(--border-active)); background: rgba(148,163,184,.12); }
+/* The stop count on a date chip. It used to be a bare number a space
+   after the date, which read as the year: "1 Nov 2". */
+.chip .chip-n {
+  margin-left: 7px; padding: 0 5px; border-radius: 6px;
+  background: var(--bg-sunken); border: 1px solid var(--border);
+  color: var(--text-3); font-size: .64rem; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
 .chip-static { cursor: default; }
 .chip-static:hover { color: var(--text-3); border-color: var(--border); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cat, var(--text-3)); flex: none; }
@@ -3069,9 +3077,12 @@ function renderSchedule() {
     ? planned.map(function (d) {
         const here = d.date === S.schedDate && d.city === S.activeCity;
         return '<button class="chip' + (here ? ' on' : '') + '" data-act="sched-jump" data-date="' + d.date +
-               '" data-city="' + d.city + '" title="' + esc(weekday(d.date) + ' ' + fmtDate(d.date) + ' in ' + CITY(d.city).name) + '">' +
-               CITY(d.city).flag + ' ' + esc(shortDate(d.date)) +
-               ' <span style="opacity:.7">' + d.items.length + '</span></button>';
+               '" data-city="' + d.city + '" title="' + esc(weekday(d.date) + ' ' + fmtDate(d.date) + ' in ' + CITY(d.city).name + ' \u00b7 ' + d.items.length + (d.items.length === 1 ? ' stop' : ' stops')) + '">' +
+               CITY(d.city).flag + ' ' + esc(fmtDate(d.date)) +
+               /* The space matters even though the pill has a margin: without
+                  it the text stream reads "1 Nov 20263", which is what gets
+                  copied and what a screen reader says. */
+               ' <span class="chip-n">' + d.items.length + '</span></button>';
       }).join('')
     : '<span class="card-note">Nothing planned yet — pick a date and add your first stop.</span>';
 
@@ -3210,11 +3221,6 @@ function startDay() {
   const d = ensureDay(S.schedDate, S.activeCity);
   S.focusDayId = d.id;
   addItem(d.id, null);
-}
-
-function shortDate(iso) {
-  const d = parseDate(iso);
-  return d ? d.getDate() + ' ' + MON[d.getMonth()] : iso;
 }
 
 function addItem(dayId, pinId) {
@@ -4278,8 +4284,12 @@ function flightMinutes(day, it) {
 function fmtDateTime(v) {
   const d = new Date(v);
   if (!isFinite(d.getTime())) return String(v || '');
-  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) +
-         ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  /* Same shape as fmtDate - day, month, year - so no date on screen is
+     missing a year. A flight's arrival is where it matters most: a long
+     haul out of December lands in the next one. */
+  return DOW[d.getDay()].slice(0, 3) + ' ' + d.getDate() + ' ' + MON[d.getMonth()] + ' ' +
+         d.getFullYear() + ' ' + String(d.getHours()).padStart(2, '0') + ':' +
+         String(d.getMinutes()).padStart(2, '0');
 }
 
 /* Trackers, with the flight number and the stop's date carried over.
