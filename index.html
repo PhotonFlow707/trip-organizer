@@ -2412,6 +2412,42 @@ function fetchJSON(url, ms) {
   }, function (e) { clearTimeout(timer); throw e; });
 }
 
+/* A turn worth being told about, on foot. Below this it is a jog in the
+   path rather than an instruction: OSRM emits a step per geometric turn,
+   and one 4 km walk came back as 53 of them. */
+const STEP_MIN_M = 40;
+
+/* Fold the noise into the instruction before it, so the distances still
+   add up to the route, and join consecutive stretches of one street.
+   Every step is copied: the route is cached and must not be mutated. */
+function simplifySteps(raw) {
+  const out = [];
+  let pending = 0;
+  (raw || []).forEach(function (st) {
+    if (!st || !st.maneuver) return;
+    const type = st.maneuver.type;
+    const anchor = type === 'arrive' || type === 'depart';
+    const d = st.distance || 0;
+    if (!anchor && d < STEP_MIN_M) {
+      if (out.length) out[out.length - 1].distance += d;
+      else pending += d;
+      return;
+    }
+    const last = out[out.length - 1];
+    if (last && st.name && last.name === st.name &&
+        (type === 'continue' || type === 'new name')) {
+      last.distance += d + pending;
+      pending = 0;
+      return;
+    }
+    out.push({ name: st.name || '', distance: d + pending,
+               maneuver: { type: type, modifier: st.maneuver.modifier } });
+    pending = 0;
+  });
+  if (pending && out.length) out[out.length - 1].distance += pending;
+  return out;
+}
+
 /* Walking, cycling and driving follow the street network. */
 function streetRoute(mode, a, b) {
   const url = OSRM_BASE + OSRM_PROFILE[mode] + '/route/v1/driving/' +
@@ -2422,15 +2458,14 @@ function streetRoute(mode, a, b) {
     if (!r || !r.geometry || !r.geometry.coordinates.length) throw new Error('no route');
     /* GeoJSON is lon,lat; Leaflet wants lat,lng. */
     const coords = r.geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
-    const steps = ((r.legs && r.legs[0] && r.legs[0].steps) || []).filter(function (x) {
-      if (!x) return false;
-      /* OSRM's last step is always 0 m, so keep it or the list never
-         tells you that you have arrived. */
-      if (x.maneuver && x.maneuver.type === 'arrive') return true;
-      return x.distance >= 5;             /* drop the shuffle-sized ones */
-    });
+    /* Simplified at the source, so every reader of the route - the card,
+       the text file, the step count in the summary - agrees. */
+    const steps = simplifySteps((r.legs && r.legs[0] && r.legs[0].steps) || []);
     return { kind: 'street', mode: mode, km: r.distance / 1000, min: r.duration / 60,
              steps: steps,
+             /* Kept so the route can be handed to Google Maps, which wants
+                the two ends rather than our geometry. */
+             from: a.slice(), to: b.slice(),
              legs: [{ kind: mode, coords: coords, min: r.duration / 60 }] };
   });
 }
@@ -2491,8 +2526,47 @@ function mergeWalkSteps(raw) {
 
 /* One merged walking step, in words. Levels are spelled out because a
    connection is often two floors down rather than along. */
-function walkStepText(x) {
-  const along = x.name ? ' along ' + x.name : '';
+/* ─── Direction wording ─────────────────────────────────────────────
+   One vocabulary for both step sources: OSRM gives walking and cycling
+   steps, MOTIS gives the walking legs of a transit journey. They used to
+   be worded separately and read differently for the same manoeuvre. */
+
+/* The street, phrased the way a sign reads. "onto X" when this step joins
+   X; "toward X" when the name only appears a step or two later, which is
+   common on unnamed footpaths and station concourses; nothing when no
+   name is within reach. A bare "Turn left" is the last resort, not the
+   default it used to be. */
+function stepRoad(name, list, i, nameOf) {
+  if (name) return ' onto ' + name;
+  /* Only the NEXT step is consulted. Looking three ahead made every
+     unnamed step in a run borrow the same distant street, so three turns
+     in a row all read "toward Rue de la Legion d'Honneur". "Toward" has
+     to mean the street you are about to join, or it is noise. */
+  const nm = i + 1 < list.length ? nameOf(list[i + 1]) : '';
+  return nm ? ' toward ' + nm : '';
+}
+
+/* Same, for the manoeuvres that continue along a road rather than join
+   one: "Continue on X" is what a navigation app says, not "Continue onto". */
+function stepAlong(name, list, i, nameOf) {
+  const road = stepRoad(name, list, i, nameOf);
+  return road.replace(' onto ', ' on ');
+}
+
+/* left/right, with slight and sharp spelled out. */
+function turnWord(dir) {
+  const d = String(dir || '').toLowerCase().replace(/_/g, ' ');
+  if (!d) return '';
+  return d.replace('slight ', 'slightly ').replace('sharp ', 'sharply ');
+}
+
+/* One walking step of a transit leg, in words. */
+function walkStepText(x, i, list) {
+  i = i || 0;
+  list = list || [x];
+  const nameOf = function (e) { return e && e.name; };
+  const onto = stepRoad(x.name, list, i, nameOf);
+  const along = stepAlong(x.name, list, i, nameOf);
   const lvl = (x.fromLevel !== null && x.toLevel !== null && x.fromLevel !== x.toLevel)
     ? (x.toLevel < x.fromLevel ? ' down to level ' : ' up to level ') + x.toLevel
     : '';
@@ -2500,20 +2574,34 @@ function walkStepText(x) {
     case 'STAIRS': return 'Take the stairs' + lvl + (x.name ? ' at ' + x.name : '');
     case 'ELEVATOR': return 'Take the lift' + lvl;
     case 'ESCALATOR': return 'Take the escalator' + lvl;
-    case 'CONTINUE': return 'Continue' + along + lvl;
-    case 'LEFT': case 'RIGHT':
-      return 'Turn ' + x.dir.toLowerCase() + along;
-    case 'SLIGHTLY_LEFT': return 'Bear left' + along;
-    case 'SLIGHTLY_RIGHT': return 'Bear right' + along;
-    case 'HARD_LEFT': return 'Turn sharply left' + along;
-    case 'HARD_RIGHT': return 'Turn sharply right' + along;
+    case 'CONTINUE': return (along ? 'Continue' + along : 'Continue straight') + lvl;
+    case 'LEFT': case 'RIGHT': return 'Turn ' + x.dir.toLowerCase() + onto;
+    case 'SLIGHTLY_LEFT': return 'Bear left' + onto;
+    case 'SLIGHTLY_RIGHT': return 'Bear right' + onto;
+    case 'HARD_LEFT': return 'Turn sharply left' + onto;
+    case 'HARD_RIGHT': return 'Turn sharply right' + onto;
     case 'CIRCLE_CLOCKWISE': case 'CIRCLE_COUNTERCLOCKWISE':
-      return 'Take the roundabout' + along;
+      return 'Take the roundabout' + onto;
     case 'UTURN_LEFT': case 'UTURN_RIGHT': return 'Turn back' + along;
-    case 'DEPART': return 'Set off' + along;
+    case 'DEPART': return 'Set off' + (along || ' straight ahead');
     default:
-      return x.dir.charAt(0) + x.dir.slice(1).toLowerCase().replace(/_/g, ' ') + along + lvl;
+      return turnWord(x.dir).replace(/^./, function (c) { return c.toUpperCase(); }) + onto + lvl;
   }
+}
+
+/* Google's documented directions URL. It takes the two ends and routes
+   them itself; handing over our own path is not something the URL API
+   supports, and Google's walking network is its own anyway. */
+const GMAPS_MODE = { walk: 'walking', bike: 'bicycling', taxi: 'driving',
+                     bus: 'transit', rail: 'transit' };
+
+function gmapsUrl(route) {
+  if (!route || !route.from || !route.to) return '';
+  const pt = function (p) { return p[0].toFixed(6) + ',' + p[1].toFixed(6); };
+  return 'https://www.google.com/maps/dir/?api=1' +
+         '&origin=' + encodeURIComponent(pt(route.from)) +
+         '&destination=' + encodeURIComponent(pt(route.to)) +
+         '&travelmode=' + (GMAPS_MODE[route.mode] || 'walking');
 }
 
 /* Bus and rail come back as a journey: walk, ride, maybe change, walk. */
@@ -2550,6 +2638,8 @@ function transitRoute(mode, a, b, when) {
     let km = 0;
     legs.forEach(function (l) { km += pathKm(l.coords); });
     return { kind: 'transit', mode: mode, km: km, min: (it.duration || 0) / 60,
+             /* Kept for the Google Maps hand-off, as for a street route. */
+             from: a.slice(), to: b.slice(),
              legs: legs, start: it.startTime, end: it.endTime, transfers: it.transfers || 0 };
   });
 }
@@ -2622,6 +2712,94 @@ function requestRoute(mode) {
   });
 }
 
+/* The directions as text. Built from the same wording functions the card
+   uses, so the file can never describe the route differently. */
+function directionsText(route) {
+  if (!route) return '';
+  const NL = '\n';
+  const L = [];
+  const dash = '----------------------------------------';
+  L.push((route.fromLabel || 'Start') + '  ->  ' + (route.toLabel || 'End'));
+  L.push(modeLabel(route.mode) + ' \u00b7 ' + fmtMin(route.min) + ' \u00b7 ' + fmtKm(route.km));
+  if (route.kind === 'transit') {
+    L.push('Depart ' + hhmm(route.start) + ' \u00b7 arrive ' + hhmm(route.end) +
+           ' \u00b7 ' + route.transfers + (route.transfers === 1 ? ' change' : ' changes'));
+  }
+  L.push(dash);
+
+  if (route.kind === 'transit') {
+    route.legs.forEach(function (leg) {
+      if (leg.kind === 'transit') {
+        L.push('');
+        L.push('[' + (leg.line || leg.vehicle) + ']  ' + (leg.fromName || '') +
+               '  ->  ' + (leg.toName || ''));
+        const bits = [];
+        if (leg.headsign) bits.push('towards ' + leg.headsign);
+        if (leg.agency) bits.push(leg.agency);
+        bits.push(fmtMin(leg.min));
+        bits.push(hhmm(leg.start) + '-' + hhmm(leg.end));
+        L.push('    ' + bits.join(' \u00b7 '));
+      } else if (leg.walkSteps && leg.walkSteps.length) {
+        L.push('');
+        L.push('Walk ' + fmtMin(leg.min) + ': ' + (leg.fromName || 'here') +
+               '  ->  ' + (leg.toName || 'the platform'));
+        leg.walkSteps.forEach(function (x, i) {
+          const d = x.distance > 0 && (x.distance >= 10 || x.dir !== 'CONTINUE')
+            ? '  (' + fmtKm(x.distance / 1000) + ')' : '';
+          L.push('  ' + (i + 1) + '. ' + walkStepText(x, i, leg.walkSteps) + d);
+        });
+      } else {
+        L.push('');
+        L.push('Walk ' + fmtMin(leg.min) + (leg.toName ? ' to ' + leg.toName : ''));
+      }
+    });
+  } else if (route.steps && route.steps.length) {
+    L.push('');
+    route.steps.forEach(function (st, i) {
+      const d = st.distance ? '  (' + fmtKm(st.distance / 1000) + ')' : '';
+      L.push('  ' + (i + 1) + '. ' + stepText(st, i, route.steps, route.toLabel) + d);
+    });
+  } else {
+    L.push('');
+    L.push('  No turn-by-turn came back for this route.');
+  }
+
+  L.push('');
+  L.push(dash);
+  const g = gmapsUrl(route);
+  if (g) L.push('Google Maps: ' + g);
+  L.push('Saved ' + new Date().toLocaleString());
+  L.push(route.kind === 'transit'
+    ? 'Lines and times from Transitous; check a live planner before you rely on a connection.'
+    : 'Path and time from OpenStreetMap routing.');
+  return L.join(NL) + NL;
+}
+
+/* Hand the browser a file. Same shape as the JSON export. */
+function downloadText(name, text) {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+}
+
+function slugify(v) {
+  return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function saveDirections(route) {
+  if (!route) return;
+  const txt = directionsText(route);
+  const name = 'directions-' + (slugify(route.fromLabel) || 'start') + '-to-' +
+               (slugify(route.toLabel) || 'end') + '.txt';
+  downloadText(name, txt);
+  toast('Saved ' + name + ' \u2014 it opens with no signal.');
+}
+
 function renderRoutePanel() {
   const host = byId('tv-route');
   const card = byId('tv-dir-card');
@@ -2647,6 +2825,15 @@ function renderRoutePanel() {
     '<span class="spacer"></span>' +
     '<span class="mono">' + fmtMin(r.min) + ' · ' + fmtKm(r.km) + '</span>' +
     '<button class="btn btn-sm" data-act="route-clear">Clear</button></div>';
+
+  /* Out to Google Maps, and down to a text file for when there is no
+     signal. Both act on the route that is on screen. */
+  const gm = gmapsUrl(r);
+  h += '<div class="form-actions">' +
+       (gm ? '<a class="btn btn-sm" target="_blank" rel="noopener" href="' + gm +
+             '">\u2197 Open in Google Maps</a>' : '') +
+       '<button class="btn btn-sm" data-act="route-save">\u2b07 Download directions</button>' +
+       '</div>';
 
   if (r.kind === 'transit') {
     h += '<div class="card-note">Depart ' + esc(hhmm(r.start)) + ' · arrive ' + esc(hhmm(r.end)) +
@@ -2675,8 +2862,8 @@ function renderRoutePanel() {
     /* Open, not collapsed: this is the thing the card is for. */
     h += '<details class="box" open><summary>🧭 Directions \u00b7 ' + r.steps.length + ' steps</summary>' +
          '<div class="box-body"><ol class="dir-list">' +
-         r.steps.map(function (st) {
-           return '<li>' + esc(stepText(st)) +
+         r.steps.map(function (st, i) {
+           return '<li>' + esc(stepText(st, i, r.steps, r.toLabel)) +
                   (st.distance ? ' <span class="card-note">' + fmtKm(st.distance / 1000) + '</span>' : '') + '</li>';
          }).join('') + '</ol></div></details>';
   }
@@ -2694,12 +2881,12 @@ function renderRoutePanel() {
                     esc(l.fromName || 'here') + ' \u2192 ' + esc(l.toName || 'the platform') +
                     ' \u00b7 ' + esc(fmtMin(l.min)) + '</div>' +
                     '<ol class="dir-list" style="margin-bottom:10px">' +
-                    l.walkSteps.map(function (x) {
+                    l.walkSteps.map(function (x, i) {
                       /* A staircase shows its length however short: a 6 m
                          flight and a 30 m one are different things when
                          you are deciding whether to find the lift. */
                       const showD = x.distance > 0 && (x.distance >= 10 || x.dir !== 'CONTINUE');
-                      return '<li>' + esc(walkStepText(x)) +
+                      return '<li>' + esc(walkStepText(x, i, l.walkSteps)) +
                              (showD ? ' <span class="card-note">' +
                               fmtKm(x.distance / 1000) + '</span>' : '') + '</li>';
                     }).join('') + '</ol>';
@@ -2713,7 +2900,10 @@ function renderRoutePanel() {
        (r.kind === 'transit'
          ? 'Timetable and lines from Transitous; a real journey planner for the city is still the last word before you travel.' +
            (r.shifted ? ' That date has passed, so this is the same weekday and time on the next equivalent service.' : '')
-         : 'Path and time from OpenStreetMap routing — the real street network, not a straight line.') +
+         : 'Path and time from OpenStreetMap routing — the real street network, not a straight ' +
+           'line. A turn can only name a street that OpenStreetMap names, and park paths, ' +
+           'bridges and squares are often unnamed; Google Maps will have its own wording ' +
+           'for those.') +
        '</div></div>';
   host.innerHTML = h;
 }
@@ -4470,6 +4660,8 @@ function overpass(query) {
 /* Everything the last search turned up, flat, so the walk bar can
    offer it without asking Overpass again. */
 let facFound = [];
+/* The walk last drawn between two facilities, so it can be exported. */
+let facRoute = null;
 
 /* The widest span a facility search may cover. An airport is ~4 km
    across and a big station well under 2; anything larger than this is a
@@ -4823,14 +5015,22 @@ function walkFacilities() {
       (route.steps && route.steps.length
         ? '<details class="box" open><summary>🧭 Directions · ' + route.steps.length +
           ' steps</summary><div class="box-body"><ol class="dir-list">' +
-          route.steps.map(function (st) {
-            return '<li>' + esc(stepText(st)) +
+          route.steps.map(function (st, i) {
+            return '<li>' + esc(stepText(st, i, route.steps, b.label)) +
                    (st.distance ? ' <span class="card-note">' + fmtKm(st.distance / 1000) + '</span>' : '') +
                    '</li>';
           }).join('') + '</ol></div></details>'
         : '<div class="card-note">No step-by-step for this one.</div>') +
+      /* The same two exports as the route card: a terminal walk is
+         exactly the one you want on your phone with no signal. */
+      '<div class="form-actions">' +
+        (gmapsUrl(route) ? '<a class="btn btn-sm" target="_blank" rel="noopener" href="' +
+          gmapsUrl(route) + '">↗ Open in Google Maps</a>' : '') +
+        '<button class="btn btn-sm" data-act="fac-save">⬇ Download directions</button>' +
+      '</div>' +
       '<div class="card-note">Footpaths as mapped in OpenStreetMap. Inside a terminal the mapping ' +
       'is often partial, so treat it as the outdoor walk between buildings.</div>';
+    facRoute = route;
   }).catch(function () {
     out.innerHTML = '<div class="status err">No walking route between those two — ' +
       'the footpaths between them may not be mapped.</div>';
@@ -4848,22 +5048,32 @@ function addFacility(name, lat, lng, kind) {
 }
 
 /* OSRM's own words, turned into something you can follow on foot. */
-function stepText(st) {
+/* One street step, in words. `dest` names where the whole route ends, so
+   the last instruction can say so rather than just "Arrive". */
+function stepText(st, i, list, dest) {
+  i = i || 0;
+  list = list || [st];
   const m = st.maneuver || {};
-  const dir = (m.modifier || '').replace('slight ', 'slightly ').replace('sharp ', 'sharply ');
-  const road = st.name ? ' onto ' + st.name : '';
+  const dir = turnWord(m.modifier);
+  const nameOf = function (e) { return e && e.name; };
+  const onto = stepRoad(st.name, list, i, nameOf);
+  const along = stepAlong(st.name, list, i, nameOf);
   switch (m.type) {
-    case 'depart': return 'Set off' + (st.name ? ' along ' + st.name : '');
-    case 'arrive': return 'Arrive';
-    case 'turn': return 'Turn ' + dir + road;
-    case 'new name': return 'Continue' + road;
-    case 'continue': return 'Continue ' + dir + road;
-    case 'end of road': return 'At the end, turn ' + dir + road;
-    case 'fork': return 'Keep ' + dir + road;
-    case 'roundabout': case 'rotary': return 'Take the roundabout' + road;
-    case 'merge': return 'Merge ' + dir + road;
-    case 'ramp': case 'on ramp': case 'off ramp': return 'Take the ramp' + road;
-    default: return (m.type ? m.type.charAt(0).toUpperCase() + m.type.slice(1) : 'Continue') + ' ' + dir + road;
+    case 'depart': return 'Set off' + (along || ' straight ahead');
+    case 'arrive': return dest ? 'Arrive at ' + dest : 'Arrive';
+    case 'turn': return 'Turn ' + dir + onto;
+    case 'new name': return along ? 'Continue' + along : 'Continue straight';
+    case 'continue': return (dir ? 'Continue ' + dir : 'Continue') + (along || ' straight');
+    /* "At the end, turn left onto X" was the old wording; a navigation app
+       just names the turn and the street. */
+    case 'end of road': return 'Turn ' + dir + onto;
+    case 'fork': return 'Keep ' + dir + onto;
+    case 'roundabout': case 'rotary': return 'Take the roundabout' + onto;
+    case 'merge': return 'Merge ' + dir + onto;
+    case 'ramp': case 'on ramp': case 'off ramp': return 'Take the ramp' + onto;
+    default:
+      return (m.type ? m.type.charAt(0).toUpperCase() + m.type.slice(1) : 'Continue') +
+             (dir ? ' ' + dir : '') + onto;
   }
 }
 
@@ -5336,6 +5546,7 @@ document.addEventListener('click', function (ev) {
 
     case 'route-mode': requestRoute(t.getAttribute('data-mode')); break;
     case 'leg-route': showLegOnMap(dayId, id); break;
+    case 'route-save': saveDirections(navRoute); break;
     case 'route-clear': clearNav(); renderTravel(); break;
 
     case 'pin-focus': focusPin(id); break;
@@ -5394,6 +5605,7 @@ document.addEventListener('click', function (ev) {
       break;
     }
 
+    case 'fac-save': saveDirections(facRoute); break;
     case 'fac-place': facLoad(parseInt(t.getAttribute('data-idx'), 10) || 0); break;
     case 'fac-add':
       addFacility(t.getAttribute('data-name'), t.getAttribute('data-lat'),
